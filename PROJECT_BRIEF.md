@@ -2,7 +2,7 @@
 
 **Status:** Pre-build. Strategic context captured; engineering work begins after this brief is reviewed.
 **Project name:** Flip Turn (repo: `flipturn`)
-**Tagline:** TBD — *not* "Swim Club Platform" (see Branding Notes below)
+**Tagline:** TBD — _not_ "Swim Club Platform" (see Branding Notes below)
 **Owner:** Darrell Bechtel
 **Last updated:** May 2026
 
@@ -54,12 +54,12 @@ Geographic priority: Ontario first (Swim Ontario has 130+ clubs; founder-local),
 
 ### Four-tier latency model for meet result data
 
-| Tier | Source | Latency | Reliability | Effort |
-|------|--------|---------|-------------|--------|
-| 1 | Live publishing (TouchPadLive, SwimPhone, Swimnerd Live) | seconds | Dirty (DQs reconcile later) | Per-meet config |
-| 2 | Session-end Hy-Tek runs on host site | 15min – 2hr | Clean | Medium |
-| 3 | End-of-meet results bundle on host site | 4-24hr | Authoritative for that meet | Medium |
-| 4 | `results.swimming.ca` canonical archive | 24-72hr | Official, ranked | Easy (single source) |
+| Tier | Source                                                   | Latency     | Reliability                 | Effort               |
+| ---- | -------------------------------------------------------- | ----------- | --------------------------- | -------------------- |
+| 1    | Live publishing (TouchPadLive, SwimPhone, Swimnerd Live) | seconds     | Dirty (DQs reconcile later) | Per-meet config      |
+| 2    | Session-end Hy-Tek runs on host site                     | 15min – 2hr | Clean                       | Medium               |
+| 3    | End-of-meet results bundle on host site                  | 4-24hr      | Authoritative for that meet | Medium               |
+| 4    | `results.swimming.ca` canonical archive                  | 24-72hr     | Official, ranked            | Easy (single source) |
 
 **v1 ships Tier 3/4 only.** Live (Tier 1) is a v2 feature, gated behind user-pasted meet URLs (not crawler-driven).
 
@@ -90,22 +90,22 @@ Bootstrap by accepting SNC athlete ID directly during onboarding (skip matcher f
 
 ## Tech stack
 
-| Layer | Choice | Rationale |
-|-------|--------|-----------|
-| API | Hono (or Fastify) on Node.js | Lightweight, TypeScript-native, fast cold starts |
-| ORM | **Prisma** | Schema-first, type-safe, generated client, excellent DX |
-| Scrapers | Node workers + BullMQ | Cron-driven jobs; same language as API |
-| DB | Postgres | Standard; relational schema fits the domain |
-| Object store | S3 (later) / local disk (early) | Raw artifact archive for replay/audit |
-| Hot cache | Redis | Live-watch state; rate-limit budgets; BullMQ backing |
-| Mobile | React Native + Expo | Single codebase iOS+Android+PWA fallback |
-| Shared types | Prisma + workspace package | Schema generates TS types used in API and mobile |
-| AI / LLM | Anthropic SDK (TypeScript) | Claude for conversational + generative features |
-| On-device ML | Apple Vision / MediaPipe | Pose detection for stroke analysis (v3+) |
-| Payments | Stripe (subscription only, no Connect) | Parent subscriptions; no platform marketplace |
-| Errors | Sentry | Already familiar |
-| Hosting (early) | Mac Mini M4 (always-on) | Zero infra cost until paying users exist |
-| Hosting (later) | AWS via existing numbered corp, or Fly.io | Scales when we cross ~500 paying users |
+| Layer           | Choice                                    | Rationale                                               |
+| --------------- | ----------------------------------------- | ------------------------------------------------------- |
+| API             | Hono (or Fastify) on Node.js              | Lightweight, TypeScript-native, fast cold starts        |
+| ORM             | **Prisma**                                | Schema-first, type-safe, generated client, excellent DX |
+| Scrapers        | Node workers + BullMQ                     | Cron-driven jobs; same language as API                  |
+| DB              | Postgres                                  | Standard; relational schema fits the domain             |
+| Object store    | S3 (later) / local disk (early)           | Raw artifact archive for replay/audit                   |
+| Hot cache       | Redis                                     | Live-watch state; rate-limit budgets; BullMQ backing    |
+| Mobile          | React Native + Expo                       | Single codebase iOS+Android+PWA fallback                |
+| Shared types    | Prisma + workspace package                | Schema generates TS types used in API and mobile        |
+| AI / LLM        | Anthropic SDK (TypeScript)                | Claude for conversational + generative features         |
+| On-device ML    | Apple Vision / MediaPipe                  | Pose detection for stroke analysis (v3+)                |
+| Payments        | Stripe (subscription only, no Connect)    | Parent subscriptions; no platform marketplace           |
+| Errors          | Sentry                                    | Already familiar                                        |
+| Hosting (early) | Mac Mini M4 (always-on)                   | Zero infra cost until paying users exist                |
+| Hosting (later) | AWS via existing numbered corp, or Fly.io | Scales when we cross ~500 paying users                  |
 
 **Language unification:** the entire stack is TypeScript except for an optional Python ML sidecar if/when classical ML grows beyond what's reasonable in JS. SDIF parser is written in TypeScript (the existing Python and JS parsers are similarly immature, so writing one is the path either way).
 
@@ -115,12 +115,12 @@ Bootstrap by accepting SNC athlete ID directly during onboarding (skip matcher f
 
 Vendor commitments are made when they solve a problem we have, not at scoping time. The phased path:
 
-| Phase | Trigger | Hosting choice |
-|-------|---------|----------------|
-| v0 (development) | Day one | Mac Mini M4 always-on, Postgres in Docker locally |
-| v0.5 (CI + staging) | First non-self user OR CI setup | Add **Neon** for serverless Postgres with PR branching (pairs cleanly with Prisma) |
-| v1 (paying users) | First $1 of revenue | Migrate API to AWS (existing numbered corp) or Fly.io |
-| v2+ (web surface emerges) | Marketing site or web admin needed | Add **Vercel** if a Next.js surface is justified |
+| Phase                     | Trigger                            | Hosting choice                                                                     |
+| ------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------- |
+| v0 (development)          | Day one                            | Mac Mini M4 always-on, Postgres in Docker locally                                  |
+| v0.5 (CI + staging)       | First non-self user OR CI setup    | Add **Neon** for serverless Postgres with PR branching (pairs cleanly with Prisma) |
+| v1 (paying users)         | First $1 of revenue                | Migrate API to AWS (existing numbered corp) or Fly.io                              |
+| v2+ (web surface emerges) | Marketing site or web admin needed | Add **Vercel** if a Next.js surface is justified                                   |
 
 Re-evaluate at each transition rather than locking now. Vercel has no v1 fit — React Native deploys via EAS, Hono runs cleanly on dedicated infra, and scrapers are long-running workers that don't suit serverless. Neon fits cleanly when the time comes but adds zero value during local Docker development.
 
@@ -194,7 +194,7 @@ Parents pay; kids decide whether the app stays installed.
 
 Be careful here — this is where apps get bloated. Real underserved jobs only.
 
-- **Club-private parent chat / forum** that's *not* WhatsApp. Topic-organized, searchable, persists when parents leave.
+- **Club-private parent chat / forum** that's _not_ WhatsApp. Topic-organized, searchable, persists when parents leave.
 - **Volunteer signup, billet hosting (for travel meets), carpooling** — adjacent to club ops without duplicating club software.
 - **Used gear marketplace** within a club — kid outgrew tech suit, sell to a younger swimmer. Recurring need; tech suits are expensive.
 - **Anonymous benchmarking** — "parents of 12yo girls swimming AAA times typically train X hours/week, sleep Y hours, etc." Anonymized, opt-in.
@@ -257,6 +257,7 @@ Used for: stroke analysis from video, automatic race detection in long footage, 
 Why on-device: video is huge (uploading meets is expensive), latency must feel instant, and parents are more comfortable with kids' video staying on the phone.
 
 v3 stroke analysis pipeline:
+
 1. Parent records meet with phone
 2. App uses Vision/MediaPipe to detect pose keypoints frame-by-frame
 3. Custom heuristics flag stroke faults (late breath, dropped elbow, asymmetric kick)
@@ -273,24 +274,25 @@ Used for: PB projection, time-standard ETA, athlete identity matching across mee
 - Results stored in Postgres, served by API as cached projections
 
 Implementation choice:
+
 - **TypeScript-first**: `simple-statistics`, `ml-regression`, custom logic. Sufficient for v1.
 - **Python sidecar (later)**: if/when classical ML grows beyond what's reasonable in JS, run a small Python service (FastAPI + scikit-learn + pandas) called by the Node workers. Keeps the main codebase unified while allowing the right tool for heavy ML.
 
 ### AI feature mapping
 
-| Feature | Pattern | Phase |
-|---------|---------|-------|
-| PB notifications | C (rule-based, not really AI) | v1 |
-| Identity resolution (athlete matching) | C | v1 → improves over time |
-| Time-standard ETA projection | C | v1 |
-| AI race recap (parent-facing) | A | v2 |
-| AI race recap (kid-facing) | A | v3 |
-| Coach feedback prompt generator | A | v3 |
-| Stroke analysis from video | B | v3 |
-| Auto-trim race clips from long footage | B | v3 |
-| Recruiting profile narrative | A | v4 / Tier 6 |
-| Recruiting email drafting | A | v4 / Tier 6 |
-| Anonymous benchmarking insights | C + A (synthesized via LLM) | v4+ |
+| Feature                                | Pattern                       | Phase                   |
+| -------------------------------------- | ----------------------------- | ----------------------- |
+| PB notifications                       | C (rule-based, not really AI) | v1                      |
+| Identity resolution (athlete matching) | C                             | v1 → improves over time |
+| Time-standard ETA projection           | C                             | v1                      |
+| AI race recap (parent-facing)          | A                             | v2                      |
+| AI race recap (kid-facing)             | A                             | v3                      |
+| Coach feedback prompt generator        | A                             | v3                      |
+| Stroke analysis from video             | B                             | v3                      |
+| Auto-trim race clips from long footage | B                             | v3                      |
+| Recruiting profile narrative           | A                             | v4 / Tier 6             |
+| Recruiting email drafting              | A                             | v4 / Tier 6             |
+| Anonymous benchmarking insights        | C + A (synthesized via LLM)   | v4+                     |
 
 ---
 
@@ -344,15 +346,15 @@ Tier 2 video features + Tier 3:
 
 ### Per-source posture
 
-| Source | Risk | Approach |
-|--------|------|----------|
-| `results.swimming.ca` | Low | Polite scraping, attribution, rate-limited |
-| Host club sites | Low | Standard scraping etiquette; respect robots.txt |
-| TouchPadLive | Medium-high | User-pasted URLs only, never crawled |
-| SwimPhone | Medium | User-pasted URLs only |
-| Swimnerd Live | Low | Open-link friendly; user-pasted URLs |
-| Swimcloud | Medium | One-off identity lookups only; no bulk scraping |
-| Meet Mobile | Do not touch | Mobile-only, owned by Comcast |
+| Source                | Risk         | Approach                                        |
+| --------------------- | ------------ | ----------------------------------------------- |
+| `results.swimming.ca` | Low          | Polite scraping, attribution, rate-limited      |
+| Host club sites       | Low          | Standard scraping etiquette; respect robots.txt |
+| TouchPadLive          | Medium-high  | User-pasted URLs only, never crawled            |
+| SwimPhone             | Medium       | User-pasted URLs only                           |
+| Swimnerd Live         | Low          | Open-link friendly; user-pasted URLs            |
+| Swimcloud             | Medium       | One-off identity lookups only; no bulk scraping |
+| Meet Mobile           | Do not touch | Mobile-only, owned by Comcast                   |
 
 ### Mandatory safeguards from day one
 
@@ -388,7 +390,7 @@ Years 1-2: public-data scraping mode. Year 2+: transition to licensed data via S
 
 **Logo:** maple leaf silhouette with a swimmer mid-stroke and stylized waves. Strong Canadian-first signal. Works at app-icon size (the swimmer + wave silhouette inside the leaf is the strongest read at small sizes).
 
-**Tagline issue:** the current logo lockup includes "Swim Club Platform," which directly contradicts our anti-goals (we are deliberately *not* building a club platform — that's PoolQ/TeamUnify's territory). Recommended action:
+**Tagline issue:** the current logo lockup includes "Swim Club Platform," which directly contradicts our anti-goals (we are deliberately _not_ building a club platform — that's PoolQ/TeamUnify's territory). Recommended action:
 
 - For app icon and primary brand mark: drop the tagline entirely, let the wordmark stand alone
 - For website / App Store listing: pick a parent-facing tagline that signals the actual wedge, e.g.:

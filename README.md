@@ -8,6 +8,7 @@ See [`PROJECT_BRIEF.md`](./PROJECT_BRIEF.md) for strategic context and
 ## Development
 
 Requires:
+
 - Node 22+ (`nvm use`)
 - pnpm 9+ (`corepack enable && corepack prepare pnpm@9.12.0 --activate`)
 - Docker (for local Postgres + Redis)

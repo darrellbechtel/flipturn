@@ -3,6 +3,7 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Plan series:** This is plan 1 of 5 derived from [`docs/superpowers/specs/2026-05-04-flipturn-mvp-design.md`](../specs/2026-05-04-flipturn-mvp-design.md). Subsequent plans:
+
 - Plan 2 — Spike + Workers (Tier-4 scrape pipeline end-to-end)
 - Plan 3 — API (Hono + magic-link auth + endpoints)
 - Plan 4 — Mobile (Expo + auth + onboarding + screens)
@@ -66,6 +67,7 @@ flipturn/
 ## Task 1: Monorepo root scaffolding
 
 **Files:**
+
 - Create: `.nvmrc`
 - Create: `.editorconfig`
 - Create: `.prettierrc`
@@ -240,6 +242,7 @@ See [`PROJECT_BRIEF.md`](./PROJECT_BRIEF.md) for strategic context and
 ## Development
 
 Requires:
+
 - Node 22+ (`nvm use`)
 - pnpm 9+ (`corepack enable && corepack prepare pnpm@9.12.0 --activate`)
 - Docker (for local Postgres + Redis)
@@ -248,10 +251,10 @@ Bootstrap:
 
 \`\`\`bash
 pnpm install
-pnpm dev:up        # start postgres + redis in docker
-pnpm db:migrate    # apply Prisma migrations
-pnpm db:seed       # seed demo data
-pnpm test          # run all tests
+pnpm dev:up # start postgres + redis in docker
+pnpm db:migrate # apply Prisma migrations
+pnpm db:seed # seed demo data
+pnpm test # run all tests
 \`\`\`
 ```
 
@@ -279,6 +282,7 @@ git commit -m "chore: scaffold monorepo root (pnpm workspace, ts/eslint/prettier
 ## Task 2: Local infra via docker compose
 
 **Files:**
+
 - Create: `compose.dev.yaml`
 - Create: `.env.example`
 
@@ -365,6 +369,7 @@ git commit -m "chore: add docker compose for local postgres + redis"
 ## Task 3: ADR 0001 — MVP hosting decision
 
 **Files:**
+
 - Create: `docs/adr/0001-mvp-hosting.md`
 
 - [ ] **Step 3.1: Write the ADR**
@@ -435,6 +440,7 @@ git commit -m "docs(adr): 0001 mvp hosting decision (mac mini + cloudflare tunne
 ## Task 4: packages/db — skeleton
 
 **Files:**
+
 - Create: `packages/db/package.json`
 - Create: `packages/db/tsconfig.json`
 
@@ -513,6 +519,7 @@ git commit -m "feat(db): scaffold @flipturn/db package"
 ## Task 5: packages/db — Prisma schema
 
 **Files:**
+
 - Create: `packages/db/prisma/schema.prisma`
 
 - [ ] **Step 5.1: Create the Prisma schema**
@@ -753,6 +760,7 @@ git commit -m "feat(db): add prisma schema (full mvp model from design spec)"
 ## Task 6: packages/db — first migration
 
 **Files:**
+
 - Modify: workspace `.env` (created by engineer for local dev; not committed)
 - Create: `packages/db/prisma/migrations/<timestamp>_initial/migration.sql` (auto-generated)
 
@@ -795,6 +803,7 @@ git commit -m "feat(db): initial migration for full mvp schema"
 ## Task 7: packages/db — exports and generated client wiring
 
 **Files:**
+
 - Create: `packages/db/src/index.ts`
 
 - [ ] **Step 7.1: Create the package entry point**
@@ -841,6 +850,7 @@ git commit -m "feat(db): export PrismaClient + lazy getPrisma helper"
 ## Task 8: packages/db — seed script
 
 **Files:**
+
 - Create: `packages/db/src/seed.ts`
 
 - [ ] **Step 8.1: Create the seed script**
@@ -932,6 +942,7 @@ git commit -m "feat(db): add idempotent seed script with two demo athletes"
 ## Task 9: packages/db — migration smoke test
 
 **Files:**
+
 - Create: `packages/db/tests/migrations.test.ts`
 - Create: `packages/db/vitest.config.ts`
 
@@ -1084,6 +1095,7 @@ git commit -m "test(db): smoke test for initial migration + swim uniqueness"
 ## Task 10: packages/shared — skeleton
 
 **Files:**
+
 - Create: `packages/shared/package.json`
 - Create: `packages/shared/tsconfig.json`
 - Create: `packages/shared/vitest.config.ts`
@@ -1165,6 +1177,7 @@ git commit -m "feat(shared): scaffold @flipturn/shared package"
 ## Task 11: packages/shared — enums
 
 **Files:**
+
 - Create: `packages/shared/src/enums.ts`
 
 `packages/shared` cannot import from `@flipturn/db` (would create a transitive `@prisma/client` dependency on the mobile app). Instead, mirror the enums as plain TS literal-union types and export an exhaustive list.
@@ -1208,10 +1221,12 @@ git commit -m "feat(shared): mirror prisma enums as ts literal unions"
 ## Task 12: packages/shared — time formatting (TDD)
 
 **Files:**
+
 - Create: `packages/shared/tests/time.test.ts`
 - Create: `packages/shared/src/time.ts`
 
 Times are stored in centiseconds (1/100 second) per the spec. We need:
+
 - `formatSwimTime(centiseconds)` → display string like `"57.32"` for sub-minute, `"1:02.45"` for minute+, `"15:23.07"` for big distances.
 - `parseSwimTime(str)` → centiseconds (round-trip with `formatSwimTime`).
 
@@ -1340,7 +1355,8 @@ export function formatSwimTime(centiseconds: number): string {
   return `${seconds}.${csStr}`;
 }
 
-const TIME_REGEX = /^(?:(?<h>\d+):(?<m1>\d{2}):(?<s1>\d{2})|(?<min>\d+):(?<s2>\d{2})|(?<s3>\d+))\.(?<cs>\d{2})$/;
+const TIME_REGEX =
+  /^(?:(?<h>\d+):(?<m1>\d{2}):(?<s1>\d{2})|(?<min>\d+):(?<s2>\d{2})|(?<s3>\d+))\.(?<cs>\d{2})$/;
 
 export function parseSwimTime(input: string): number {
   const match = TIME_REGEX.exec(input);
@@ -1383,6 +1399,7 @@ git commit -m "feat(shared): add formatSwimTime/parseSwimTime in centiseconds"
 ## Task 13: packages/shared — eventKey (TDD)
 
 **Files:**
+
 - Create: `packages/shared/tests/eventKey.test.ts`
 - Create: `packages/shared/src/eventKey.ts`
 
@@ -1520,6 +1537,7 @@ git commit -m "feat(shared): add buildEventKey/parseEventKey with full validatio
 ## Task 14: packages/shared — zod schemas (TDD)
 
 **Files:**
+
 - Create: `packages/shared/tests/schemas.test.ts`
 - Create: `packages/shared/src/schemas.ts`
 
@@ -1578,9 +1596,10 @@ describe('OnboardAthleteSchema', () => {
   });
 
   it('accepts explicit relationship', () => {
-    expect(
-      OnboardAthleteSchema.parse({ sncId: 'SNC-12345', relationship: 'GUARDIAN' }),
-    ).toEqual({ sncId: 'SNC-12345', relationship: 'GUARDIAN' });
+    expect(OnboardAthleteSchema.parse({ sncId: 'SNC-12345', relationship: 'GUARDIAN' })).toEqual({
+      sncId: 'SNC-12345',
+      relationship: 'GUARDIAN',
+    });
   });
 
   it('rejects empty sncId', () => {
@@ -1665,11 +1684,7 @@ import { GENDERS, RELATIONSHIPS, SWIM_STATUSES } from './enums.js';
 // ─── Auth ────────────────────────────────────────────────────────────────
 
 export const MagicLinkRequestSchema = z.object({
-  email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .pipe(z.string().email()),
+  email: z.string().trim().toLowerCase().pipe(z.string().email()),
 });
 export type MagicLinkRequest = z.infer<typeof MagicLinkRequestSchema>;
 
@@ -1743,6 +1758,7 @@ git commit -m "feat(shared): add zod schemas for auth, athletes, swims, PBs"
 ## Task 15: packages/shared — package entry point
 
 **Files:**
+
 - Create: `packages/shared/src/index.ts`
 
 - [ ] **Step 15.1: Create the entry point**

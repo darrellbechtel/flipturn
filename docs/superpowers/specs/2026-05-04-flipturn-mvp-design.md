@@ -32,7 +32,7 @@ Each item below gets its own brainstorm and design spec when its time comes:
 - Monetization (Stripe subscriptions + paywall)
 - App Store / Play Store launch
 
-Architectural choices below are made *with* these futures in mind so we don't have to retrofit when they arrive.
+Architectural choices below are made _with_ these futures in mind so we don't have to retrofit when they arrive.
 
 ## 3. High-level architecture
 
@@ -55,12 +55,12 @@ Architectural choices below are made *with* these futures in mind so we don't ha
 
 **Process model on the Mac Mini:**
 
-| Process | Source | Role |
-|---------|--------|------|
-| `postgres` | docker compose | Primary datastore |
-| `redis` | docker compose | BullMQ backing + token-bucket rate limiter + session cache |
-| `apps/api` | pm2 | Hono HTTP server behind Cloudflare Tunnel |
-| `apps/workers` | pm2 | BullMQ worker process running scrape jobs |
+| Process        | Source         | Role                                                       |
+| -------------- | -------------- | ---------------------------------------------------------- |
+| `postgres`     | docker compose | Primary datastore                                          |
+| `redis`        | docker compose | BullMQ backing + token-bucket rate limiter + session cache |
+| `apps/api`     | pm2            | Hono HTTP server behind Cloudflare Tunnel                  |
+| `apps/workers` | pm2            | BullMQ worker process running scrape jobs                  |
 
 **Public ingress:** Cloudflare Tunnel (free, stable, no NAT/dynamic-DNS work). Documented in `docs/adr/0001-mvp-hosting.md`.
 
@@ -97,18 +97,18 @@ The schema is the heart of MVP. Designed to satisfy the brief's normalized model
 
 ### 5.1 Entity reference
 
-| Model | Purpose | Notes |
-|-------|---------|-------|
-| `User` | Magic-link account | `email @unique`, timestamps; no profile data |
-| `MagicLinkToken` | Auth token | Stores **hash** of token (sha256), not plaintext; single-use; 15-min expiry |
-| `Session` | Issued session | Long-lived in MVP; refresh logic deferred |
-| `Athlete` | A swimmer | `sncId @unique` (mandatory in MVP); `alternateNames String[]` reserved for future matcher; `dob` storable as year-only per privacy posture |
-| `UserAthlete` | Many-to-many user↔athlete | Composite PK; `relationship` enum (default `PARENT`) |
-| `ClubMembership` | Club history | Separate table with start/end dates so an athlete can have prior clubs |
-| `Meet` | Competition | `externalId @unique` for SNC meet ID; `course` enum (SCM/LCM/SCY) |
-| `Event` | Race within a meet | `(meetId, distanceM, stroke, gender, ageBand, round)` |
-| `Swim` | One race result | `timeCentiseconds Int`, `splits Int[]`, denormalized `eventKey` (e.g. `"100_FR_LCM"`); **(deferred-use:** `supersedesId`, `isCurrent`, `dataSource`, `sourceUrl`, `scrapedAt`**)** |
-| `PersonalBest` | Per-athlete-per-event current best | Denormalized cache, `@@unique([athleteId, eventKey])`; recomputed by worker after each scrape |
+| Model            | Purpose                            | Notes                                                                                                                                                                              |
+| ---------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `User`           | Magic-link account                 | `email @unique`, timestamps; no profile data                                                                                                                                       |
+| `MagicLinkToken` | Auth token                         | Stores **hash** of token (sha256), not plaintext; single-use; 15-min expiry                                                                                                        |
+| `Session`        | Issued session                     | Long-lived in MVP; refresh logic deferred                                                                                                                                          |
+| `Athlete`        | A swimmer                          | `sncId @unique` (mandatory in MVP); `alternateNames String[]` reserved for future matcher; `dob` storable as year-only per privacy posture                                         |
+| `UserAthlete`    | Many-to-many user↔athlete          | Composite PK; `relationship` enum (default `PARENT`)                                                                                                                               |
+| `ClubMembership` | Club history                       | Separate table with start/end dates so an athlete can have prior clubs                                                                                                             |
+| `Meet`           | Competition                        | `externalId @unique` for SNC meet ID; `course` enum (SCM/LCM/SCY)                                                                                                                  |
+| `Event`          | Race within a meet                 | `(meetId, distanceM, stroke, gender, ageBand, round)`                                                                                                                              |
+| `Swim`           | One race result                    | `timeCentiseconds Int`, `splits Int[]`, denormalized `eventKey` (e.g. `"100_FR_LCM"`); **(deferred-use:** `supersedesId`, `isCurrent`, `dataSource`, `sourceUrl`, `scrapedAt`**)** |
+| `PersonalBest`   | Per-athlete-per-event current best | Denormalized cache, `@@unique([athleteId, eventKey])`; recomputed by worker after each scrape                                                                                      |
 
 ### 5.2 Three load-bearing design calls
 
@@ -129,7 +129,7 @@ Re-scraping the same athlete must not duplicate swims. Each `Swim` is uniquely i
 
 The worker's reconcile step uses Prisma's `upsert` keyed on this tuple.
 
-**Future relaxation (Tier 3 multi-source):** When we start writing multiple versions of the same swim from different sources, this constraint is dropped and replaced by a Postgres *partial unique index* enforcing one `isCurrent=true` row per `(athleteId, meetId, eventId)`:
+**Future relaxation (Tier 3 multi-source):** When we start writing multiple versions of the same swim from different sources, this constraint is dropped and replaced by a Postgres _partial unique index_ enforcing one `isCurrent=true` row per `(athleteId, meetId, eventId)`:
 
 ```sql
 CREATE UNIQUE INDEX swim_current_idx
@@ -263,18 +263,18 @@ No passwords, no recovery flow — losing access means starting over with a new 
 
 ### 10.2 Testing strategy (proportional to MVP)
 
-| Package | Strategy |
-|---------|----------|
-| `packages/db` | Migrations apply cleanly against a fresh Postgres (CI script) |
-| `packages/shared` | Unit tests for `formatSwimTime`, `parseSwimTime`, `eventKey` builder |
-| `apps/workers` | Integration tests using saved spike fixtures (raw HTML/JSON → expected normalized records); high coverage because parsers break |
-| `apps/api` | Integration tests against a Dockerized Postgres (`@testcontainers/postgresql`) |
-| `apps/mobile` | Manual QA only in closed beta — no Detox/Maestro |
+| Package           | Strategy                                                                                                                        |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/db`     | Migrations apply cleanly against a fresh Postgres (CI script)                                                                   |
+| `packages/shared` | Unit tests for `formatSwimTime`, `parseSwimTime`, `eventKey` builder                                                            |
+| `apps/workers`    | Integration tests using saved spike fixtures (raw HTML/JSON → expected normalized records); high coverage because parsers break |
+| `apps/api`        | Integration tests against a Dockerized Postgres (`@testcontainers/postgresql`)                                                  |
+| `apps/mobile`     | Manual QA only in closed beta — no Detox/Maestro                                                                                |
 
 ### 10.3 Privacy & legal (per brief)
 
 - PIPEDA-compliant privacy policy live before any beta user installs
-- `DELETE /me` endpoint (right to deletion); deletes user, sessions, and `UserAthlete` rows. Athlete records are *not* deleted — they're shared facts pulled from public records and may be linked by other beta users.
+- `DELETE /me` endpoint (right to deletion); deletes user, sessions, and `UserAthlete` rows. Athlete records are _not_ deleted — they're shared facts pulled from public records and may be linked by other beta users.
 - DOB defaults to year-only storage; full DOB only requested if a future feature demands precision (matcher, etc. — not in MVP)
 - Source attribution shown on every swim ("From results.swimming.ca, scraped <date>")
 - Public takedown form at `/legal/takedown` (static page); deletion fulfilled within 7 days
@@ -290,17 +290,17 @@ No passwords, no recovery flow — losing access means starting over with a new 
 
 Mirrors the brief, with `packages/shared` inserted and the spike scoped explicitly:
 
-| Step | Deliverable | Milestone gate |
-|------|-------------|----------------|
-| 0 | Monorepo skeleton (pnpm workspace, tsconfig, ESLint/Prettier) | `pnpm install` works at root |
-| 1 | `packages/db` — Prisma schema + first migration + seed | Migration applies to a fresh Postgres |
-| 2 | `packages/shared` — time format, eventKey, zod schemas | Unit tests green |
-| 3 | **Spike**: investigate `results.swimming.ca`, save fixtures, write `docs/adr/0002-snc-data-source.md` | ADR merged |
-| 4 | `apps/workers` — fetcher → parser → reconciler → BullMQ wiring | One real athlete's history end-to-end in DB |
-| 5 | `apps/api` — magic-link auth + Resend → athletes endpoints → swim/PB/progression endpoints | Postman/curl smoke pass |
-| 6 | `apps/mobile` — auth → onboarding → home → event detail | Founder uses it for own kid daily |
-| 7 | Cloudflare Tunnel + pm2 + docker compose hardening; Sentry wired | Public URL responds; outages alert |
-| 8 | Closed-beta distribution — TestFlight + Expo internal links; recruit 10–20 parents | First beta user onboards successfully |
+| Step | Deliverable                                                                                           | Milestone gate                              |
+| ---- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| 0    | Monorepo skeleton (pnpm workspace, tsconfig, ESLint/Prettier)                                         | `pnpm install` works at root                |
+| 1    | `packages/db` — Prisma schema + first migration + seed                                                | Migration applies to a fresh Postgres       |
+| 2    | `packages/shared` — time format, eventKey, zod schemas                                                | Unit tests green                            |
+| 3    | **Spike**: investigate `results.swimming.ca`, save fixtures, write `docs/adr/0002-snc-data-source.md` | ADR merged                                  |
+| 4    | `apps/workers` — fetcher → parser → reconciler → BullMQ wiring                                        | One real athlete's history end-to-end in DB |
+| 5    | `apps/api` — magic-link auth + Resend → athletes endpoints → swim/PB/progression endpoints            | Postman/curl smoke pass                     |
+| 6    | `apps/mobile` — auth → onboarding → home → event detail                                               | Founder uses it for own kid daily           |
+| 7    | Cloudflare Tunnel + pm2 + docker compose hardening; Sentry wired                                      | Public URL responds; outages alert          |
+| 8    | Closed-beta distribution — TestFlight + Expo internal links; recruit 10–20 parents                    | First beta user onboards successfully       |
 
 Estimated calendar: **8–12 weeks** of evening/weekend work, given Darrell's day-job + multi-agent R&D bandwidth.
 

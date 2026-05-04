@@ -1,0 +1,15 @@
+# machine-generated
+pnpm-lock.yaml
+
+# build output
+**/dist/**
+**/node_modules/**
+**/.expo/**
+**/.next/**
+**/.turbo/**
+
+# raw scrape archives (gitignored anyway, but keep prettier off them)
+data/
+
+# generated migrations
+**/prisma/migrations/**
