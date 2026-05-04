@@ -1,0 +1,210 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth ────────────────────────────────────────────────────────────────
+
+model User {
+  id         String           @id @default(cuid())
+  email      String           @unique
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  magicLinks MagicLinkToken[]
+  sessions   Session[]
+  athletes   UserAthlete[]
+}
+
+model MagicLinkToken {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Session {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime  @default(now())
+  revokedAt  DateTime?
+
+  @@index([userId])
+}
+
+// ─── People ──────────────────────────────────────────────────────────────
+
+model Athlete {
+  id             String           @id @default(cuid())
+  sncId          String           @unique
+  primaryName    String
+  alternateNames String[]
+  dob            DateTime?
+  gender         Gender?
+  homeClub       String?
+  clubHistory    ClubMembership[]
+  swims          Swim[]
+  personalBests  PersonalBest[]
+  users          UserAthlete[]
+  lastScrapedAt  DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model UserAthlete {
+  userId       String
+  athleteId    String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  athlete      Athlete      @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  relationship Relationship @default(PARENT)
+  addedAt      DateTime     @default(now())
+
+  @@id([userId, athleteId])
+  @@index([athleteId])
+}
+
+model ClubMembership {
+  id        String    @id @default(cuid())
+  athleteId String
+  athlete   Athlete   @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  clubName  String
+  clubCode  String?
+  startDate DateTime?
+  endDate   DateTime?
+
+  @@index([athleteId])
+}
+
+enum Relationship {
+  PARENT
+  GUARDIAN
+  SELF
+  OTHER
+}
+
+enum Gender {
+  M
+  F
+  X
+}
+
+// ─── Competition ────────────────────────────────────────────────────────
+
+model Meet {
+  id           String   @id @default(cuid())
+  externalId   String   @unique
+  name         String
+  sanctionBody String?
+  course       Course
+  location     String?
+  startDate    DateTime
+  endDate      DateTime
+  sourceUrl    String?
+  events       Event[]
+  swims        Swim[]
+  createdAt    DateTime @default(now())
+}
+
+enum Course {
+  SCM
+  LCM
+  SCY
+}
+
+model Event {
+  id        String  @id @default(cuid())
+  meetId    String
+  meet      Meet    @relation(fields: [meetId], references: [id], onDelete: Cascade)
+  distanceM Int
+  stroke    Stroke
+  gender    Gender
+  ageBand   String?
+  round     Round
+  swims     Swim[]
+
+  @@unique([meetId, distanceM, stroke, gender, ageBand, round])
+  @@index([meetId])
+}
+
+enum Stroke {
+  FR
+  BK
+  BR
+  FL
+  IM
+}
+
+enum Round {
+  PRELIM
+  SEMI
+  FINAL
+  TIMED_FINAL
+}
+
+// ─── Results ────────────────────────────────────────────────────────────
+
+model Swim {
+  id        String  @id @default(cuid())
+  athleteId String
+  athlete   Athlete @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  meetId    String
+  meet      Meet    @relation(fields: [meetId], references: [id], onDelete: Cascade)
+  eventId   String
+  event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  timeCentiseconds Int
+  splits           Int[]
+  place            Int?
+  status           SwimStatus @default(OFFICIAL)
+
+  eventKey String
+
+  dataSource String
+  sourceUrl  String?
+  scrapedAt  DateTime @default(now())
+
+  supersedesId String?
+  supersedes   Swim?          @relation("SwimVersion", fields: [supersedesId], references: [id])
+  supersededBy Swim[]         @relation("SwimVersion")
+  isCurrent    Boolean        @default(true)
+  PersonalBest PersonalBest[]
+
+  @@unique([athleteId, meetId, eventId])
+  @@index([athleteId, eventKey])
+  @@index([meetId])
+}
+
+enum SwimStatus {
+  OFFICIAL
+  DQ
+  NS
+  DNF
+  WITHDRAWN
+}
+
+model PersonalBest {
+  id               String   @id @default(cuid())
+  athleteId        String
+  athlete          Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  eventKey         String
+  swimId           String
+  swim             Swim     @relation(fields: [swimId], references: [id])
+  timeCentiseconds Int
+  achievedAt       DateTime
+  updatedAt        DateTime @updatedAt
+
+  @@unique([athleteId, eventKey])
+  @@index([eventKey])
+}
