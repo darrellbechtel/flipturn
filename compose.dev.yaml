@@ -11,7 +11,9 @@ services:
       POSTGRES_PASSWORD: flipturn_dev
       POSTGRES_DB: flipturn
     ports:
-      - '5432:5432'
+      # Mapped to 55432 on the host to avoid colliding with a host-installed
+      # Postgres that may already be listening on 5432.
+      - '55432:5432'
     volumes:
       - flipturn_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -24,7 +26,8 @@ services:
     image: redis:7-alpine
     container_name: flipturn-redis
     ports:
-      - '6379:6379'
+      # Mapped to 56379 to avoid colliding with a host-installed Redis.
+      - '56379:6379'
     volumes:
       - flipturn_redisdata:/data
     healthcheck:
