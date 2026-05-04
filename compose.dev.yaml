@@ -1,0 +1,36 @@
+name: flipturn-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: flipturn-postgres
+    environment:
+      POSTGRES_USER: flipturn
+      POSTGRES_PASSWORD: flipturn_dev
+      POSTGRES_DB: flipturn
+    ports:
+      - '5432:5432'
+    volumes:
+      - flipturn_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U flipturn -d flipturn']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: flipturn-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - flipturn_redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  flipturn_pgdata:
+  flipturn_redisdata:
