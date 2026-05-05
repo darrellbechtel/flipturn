@@ -6,7 +6,10 @@
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./queue": "./src/queue.ts"
+    "./queue": "./src/queue.ts",
+    "./parser/athletePage": "./src/parser/athletePage.ts",
+    "./reconcile": "./src/reconcile.ts",
+    "./personalBest": "./src/personalBest.ts"
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
