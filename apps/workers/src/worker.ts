@@ -3,8 +3,8 @@ import { getPrisma } from '@flipturn/db';
 import { SCRAPE_ATHLETE_QUEUE, type ScrapeAthleteJob } from './queue.js';
 import { getRedis } from './redis.js';
 import { getLogger } from './logger.js';
-import { politeFetch, FetchBlockedError } from './fetch.js';
-import { parseStub } from './parser/stub.js';
+import { politeFetch, FetchBlockedError, FetchRetryError } from './fetch.js';
+import { parseAthletePage } from './parser/athletePage.js';
 import { reconcile } from './reconcile.js';
 import { recomputePersonalBests } from './personalBest.js';
 import { buildAthleteUrl } from './url.js';
@@ -16,9 +16,9 @@ export function startScrapeWorker(): Worker<ScrapeAthleteJob> {
     SCRAPE_ATHLETE_QUEUE,
     async (job: Job<ScrapeAthleteJob>) => {
       const { athleteId, sncId } = job.data;
-      log.info({ jobId: job.id, athleteId, sncId }, 'job started');
-
       const url = buildAthleteUrl(sncId);
+      log.info({ jobId: job.id, athleteId, sncId, url }, 'job started');
+
       let body: string;
       try {
         const result = await politeFetch({ url, sncId });
@@ -26,28 +26,33 @@ export function startScrapeWorker(): Worker<ScrapeAthleteJob> {
       } catch (err) {
         if (err instanceof FetchBlockedError) {
           log.warn({ jobId: job.id, err: err.message }, 'fetch blocked; skipping');
-          return { skipped: true as const };
+          return { skipped: true as const, reason: err.message };
         }
+        // FetchRetryError + any other error → re-throw so BullMQ retries.
         throw err;
       }
 
-      const snapshot = parseStub({ sncId, body });
+      const snapshot = parseAthletePage(body, { sncId });
 
       const prisma = getPrisma();
       const { athleteId: dbAthleteId } = await reconcile(prisma, snapshot);
       await recomputePersonalBests(prisma, dbAthleteId);
 
-      log.info({ jobId: job.id, dbAthleteId }, 'job complete');
+      log.info({ jobId: job.id, dbAthleteId, swims: snapshot.swims.length }, 'job complete');
       return { dbAthleteId, swims: snapshot.swims.length };
     },
     {
       connection: getRedis(),
-      concurrency: 1, // Plan 2 keeps it serial; Plan 3 may bump
+      concurrency: 1,
     },
   );
 
   worker.on('failed', (job, err) => {
-    log.error({ jobId: job?.id, err }, 'job failed');
+    if (err instanceof FetchRetryError) {
+      log.warn({ jobId: job?.id, retryAfterMs: err.retryAfterMs }, 'job will retry on backoff');
+    } else {
+      log.error({ jobId: job?.id, err }, 'job failed');
+    }
   });
 
   worker.on('completed', (job) => {
@@ -62,7 +67,6 @@ export function startSchedulerWorker(): Worker {
   const w = new Worker(
     'flipturn-scheduler',
     async () => {
-      // Lazy import to avoid circular import if scheduler.ts grows
       const { tickScheduler } = await import('./scheduler.js');
       await tickScheduler();
     },

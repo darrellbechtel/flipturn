@@ -5,7 +5,7 @@ import { Queue, Worker, QueueEvents } from 'bullmq';
 import { Redis } from 'ioredis';
 import { reconcile } from '../src/reconcile.js';
 import { recomputePersonalBests } from '../src/personalBest.js';
-import { parseStub } from '../src/parser/stub.js';
+import { DEMO_SARAH } from './fixtures/demoSnapshots.js';
 
 const TEST_DB = `flipturn_pipeline_test_${Date.now()}`;
 const TEST_URL = `postgresql://flipturn:flipturn_dev@localhost:55432/${TEST_DB}?schema=public`;
@@ -38,9 +38,8 @@ describe.skip('pipeline integration', () => {
 
     worker = new Worker(
       QUEUE_NAME,
-      async (job) => {
-        const { sncId } = job.data as { sncId: string };
-        const snap = parseStub({ sncId, body: '' });
+      async (_job) => {
+        const snap = DEMO_SARAH;
         const { athleteId } = await reconcile(prisma, snap);
         await recomputePersonalBests(prisma, athleteId);
         return { athleteId };
