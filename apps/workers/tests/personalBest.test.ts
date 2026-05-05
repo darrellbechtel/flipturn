@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import { PrismaClient } from '@flipturn/db';
 import { reconcile } from '../src/reconcile.js';
 import { recomputePersonalBests } from '../src/personalBest.js';
-import { parseStub } from '../src/parser/stub.js';
+import { DEMO_SARAH } from './fixtures/demoSnapshots.js';
 
 const TEST_DB = `flipturn_pb_test_${Date.now()}`;
 const TEST_URL = `postgresql://flipturn:flipturn_dev@localhost:55432/${TEST_DB}?schema=public`;
@@ -43,7 +43,7 @@ describe('recomputePersonalBests', () => {
   });
 
   it('creates a PB for every (athlete, eventKey) with at least one OFFICIAL swim', async () => {
-    const snap = parseStub({ fixtureName: 'demo-sarah', sncId: 'x', body: '' });
+    const snap = DEMO_SARAH;
     const { athleteId } = await reconcile(prisma, snap);
     await recomputePersonalBests(prisma, athleteId);
 
@@ -55,7 +55,7 @@ describe('recomputePersonalBests', () => {
   });
 
   it('PB points to the fastest OFFICIAL swim and ignores DQ', async () => {
-    const snap = parseStub({ fixtureName: 'demo-sarah', sncId: 'x', body: '' });
+    const snap = DEMO_SARAH;
     const { athleteId } = await reconcile(prisma, snap);
 
     // mark one swim as DQ — it should be ignored from PB calc
@@ -73,7 +73,7 @@ describe('recomputePersonalBests', () => {
   });
 
   it('updates the PB swimId when a faster swim arrives', async () => {
-    const snap = parseStub({ fixtureName: 'demo-sarah', sncId: 'x', body: '' });
+    const snap = DEMO_SARAH;
     const { athleteId } = await reconcile(prisma, snap);
     await recomputePersonalBests(prisma, athleteId);
 
@@ -96,7 +96,7 @@ describe('recomputePersonalBests', () => {
   });
 
   it('is idempotent', async () => {
-    const snap = parseStub({ fixtureName: 'demo-sarah', sncId: 'x', body: '' });
+    const snap = DEMO_SARAH;
     const { athleteId } = await reconcile(prisma, snap);
     await recomputePersonalBests(prisma, athleteId);
     const first = await prisma.personalBest.findMany({ where: { athleteId } });

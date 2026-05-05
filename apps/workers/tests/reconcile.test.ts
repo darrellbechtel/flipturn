@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { execSync } from 'node:child_process';
 import { PrismaClient } from '@flipturn/db';
 import { reconcile } from '../src/reconcile.js';
-import { parseStub } from '../src/parser/stub.js';
+import { DEMO_SARAH } from './fixtures/demoSnapshots.js';
 
 const TEST_DB = `flipturn_reconcile_test_${Date.now()}`;
 const TEST_URL = `postgresql://flipturn:flipturn_dev@localhost:55432/${TEST_DB}?schema=public`;
@@ -42,7 +42,7 @@ describe('reconcile', () => {
   });
 
   it('inserts athlete, meet, events, and swims from a fresh snapshot', async () => {
-    const snap = parseStub({ fixtureName: 'demo-sarah', sncId: 'x', body: '' });
+    const snap = DEMO_SARAH;
     await reconcile(prisma, snap);
 
     const athlete = await prisma.athlete.findUnique({ where: { sncId: 'DEMO-SARAH-001' } });
@@ -54,7 +54,7 @@ describe('reconcile', () => {
   });
 
   it('is idempotent — re-applying the same snapshot makes no new rows', async () => {
-    const snap = parseStub({ fixtureName: 'demo-sarah', sncId: 'x', body: '' });
+    const snap = DEMO_SARAH;
     await reconcile(prisma, snap);
     const before = {
       athletes: await prisma.athlete.count(),
@@ -73,7 +73,7 @@ describe('reconcile', () => {
   });
 
   it('updates athlete metadata if the snapshot changes it', async () => {
-    const first = parseStub({ fixtureName: 'demo-sarah', sncId: 'x', body: '' });
+    const first = DEMO_SARAH;
     await reconcile(prisma, first);
 
     const updated = { ...first, homeClub: 'New Club' };
@@ -85,7 +85,7 @@ describe('reconcile', () => {
 
   it('sets lastScrapedAt to a recent timestamp', async () => {
     const before = new Date();
-    const snap = parseStub({ fixtureName: 'demo-sarah', sncId: 'x', body: '' });
+    const snap = DEMO_SARAH;
     await reconcile(prisma, snap);
     const athlete = await prisma.athlete.findUnique({ where: { sncId: 'DEMO-SARAH-001' } });
     expect(athlete?.lastScrapedAt).not.toBeNull();
@@ -93,7 +93,7 @@ describe('reconcile', () => {
   });
 
   it('writes the eventKey on every swim', async () => {
-    const snap = parseStub({ fixtureName: 'demo-sarah', sncId: 'x', body: '' });
+    const snap = DEMO_SARAH;
     await reconcile(prisma, snap);
     const swims = await prisma.swim.findMany();
     for (const swim of swims) {

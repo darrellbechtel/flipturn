@@ -7,6 +7,7 @@ import { politeFetch, FetchBlockedError } from './fetch.js';
 import { parseStub } from './parser/stub.js';
 import { reconcile } from './reconcile.js';
 import { recomputePersonalBests } from './personalBest.js';
+import { buildAthleteUrl } from './url.js';
 
 export function startScrapeWorker(): Worker<ScrapeAthleteJob> {
   const log = getLogger();
@@ -14,27 +15,23 @@ export function startScrapeWorker(): Worker<ScrapeAthleteJob> {
   const worker = new Worker<ScrapeAthleteJob>(
     SCRAPE_ATHLETE_QUEUE,
     async (job: Job<ScrapeAthleteJob>) => {
-      const { athleteId, sncId, fixtureName } = job.data;
-      log.info({ jobId: job.id, athleteId, sncId, fixtureName }, 'job started');
+      const { athleteId, sncId } = job.data;
+      log.info({ jobId: job.id, athleteId, sncId }, 'job started');
 
-      // In Plan 2, fixtureName branches us into the stub parser without fetching.
-      // Plan 3 flips this to: real URL → real fetch → real parser.
-      let body = '';
-      if (!fixtureName) {
-        const url = buildSourceUrl(sncId);
-        try {
-          const result = await politeFetch({ url, sncId });
-          body = result.body;
-        } catch (err) {
-          if (err instanceof FetchBlockedError) {
-            log.warn({ jobId: job.id, err: err.message }, 'fetch blocked; skipping');
-            return { skipped: true as const };
-          }
-          throw err;
+      const url = buildAthleteUrl(sncId);
+      let body: string;
+      try {
+        const result = await politeFetch({ url, sncId });
+        body = result.body;
+      } catch (err) {
+        if (err instanceof FetchBlockedError) {
+          log.warn({ jobId: job.id, err: err.message }, 'fetch blocked; skipping');
+          return { skipped: true as const };
         }
+        throw err;
       }
 
-      const snapshot = parseStub({ fixtureName, sncId, body });
+      const snapshot = parseStub({ sncId, body });
 
       const prisma = getPrisma();
       const { athleteId: dbAthleteId } = await reconcile(prisma, snapshot);
@@ -73,14 +70,4 @@ export function startSchedulerWorker(): Worker {
   );
   w.on('failed', (job, err) => log.error({ jobId: job?.id, err }, 'scheduler tick failed'));
   return w;
-}
-
-/**
- * Build the source URL for an SNC athlete. This is a Plan 2 placeholder.
- * Per ADR 0002, the real URL is `https://www.swimming.ca/swimmer/<id>/`,
- * but Plan 2's pipeline only ever runs the fixture path (fixtureName set),
- * so this isn't exercised. Plan 3 replaces this with the real URL builder.
- */
-function buildSourceUrl(sncId: string): string {
-  return `https://www.swimming.ca/swimmer/${encodeURIComponent(sncId)}/`;
 }

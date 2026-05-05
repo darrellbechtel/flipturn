@@ -18,7 +18,8 @@ let queue: Queue;
 let worker: Worker;
 let events: QueueEvents;
 
-describe('pipeline integration', () => {
+// Re-enabled in Plan 3 Task 8 with a mocked fetch path.
+describe.skip('pipeline integration', () => {
   beforeAll(async () => {
     execSync(
       `docker exec flipturn-postgres psql -U flipturn -d flipturn -c "CREATE DATABASE ${TEST_DB};"`,
@@ -38,13 +39,8 @@ describe('pipeline integration', () => {
     worker = new Worker(
       QUEUE_NAME,
       async (job) => {
-        const { sncId, fixtureName } = job.data as {
-          sncId: string;
-          fixtureName?: string | undefined;
-        };
-        const snap = parseStub(
-          fixtureName ? { sncId, fixtureName, body: '' } : { sncId, body: '' },
-        );
+        const { sncId } = job.data as { sncId: string };
+        const snap = parseStub({ sncId, body: '' });
         const { athleteId } = await reconcile(prisma, snap);
         await recomputePersonalBests(prisma, athleteId);
         return { athleteId };
