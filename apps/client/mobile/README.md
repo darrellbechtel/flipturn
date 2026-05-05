@@ -1,0 +1,64 @@
+# @flipturn/mobile
+
+Expo / React Native client for the Flip Turn MVP. Five screens: email
+entry, magic-link landing, onboarding, home, event detail.
+
+See [`docs/superpowers/specs/2026-05-04-01-flipturn-mvp-design.md`](../../../docs/superpowers/specs/2026-05-04-01-flipturn-mvp-design.md) §8 for the screen specs and [`docs/adr/0005-mobile-architecture.md`](../../../docs/adr/0005-mobile-architecture.md) for the architecture decisions.
+
+## Local development
+
+The API must be running for the mobile app to do anything beyond render
+auth screens. From the repo root:
+
+```bash
+pnpm dev:up # postgres + redis
+pnpm api:dev # API on http://localhost:3000
+```
+
+Then in another terminal:
+
+```bash
+pnpm mobile:dev # Expo dev server with QR for Expo Go
+```
+
+If running on a physical device, set `EXPO_PUBLIC_API_BASE_URL` to your
+Mac's LAN IP (e.g. `http://192.168.1.42:3000`) — `localhost` doesn't
+resolve on the device.
+
+## Screens
+
+1. **Email entry** — single email field, magic-link request
+2. **Magic-link landing** — handles `flipturn://auth?token=…` deep link, consumes token, stores session
+3. **Onboarding** — SNC athlete ID input, polls for first scrape result
+4. **Home** — athlete switcher (top), PB list grouped by stroke
+5. **Event detail** — line-chart progression + swim history list
+
+## Architecture
+
+- `app/` — expo-router file-based routes
+- `api/` — fetch wrapper + React Query hooks
+- `auth/` — session storage (SecureStore) + AuthProvider context
+- `theme/` — colors, spacing, typography tokens
+- `components/` — RN components shared across screens
+- `lib/` — utilities (env, time formatting)
+- `tests/` — Vitest unit tests (no RN component tests in MVP)
+
+## Manual smoke testing
+
+Without a Resend API key, the API uses an in-memory email sender — magic-link
+emails are captured in process memory and not actually sent. To complete the
+sign-in flow during local dev:
+
+1. Briefly add `console.log('magic-link token:', tokenPlain)` to
+   `apps/server/api/src/routes/auth.ts` inside the magic-link/request handler.
+2. Restart the API: `pnpm api:dev`.
+3. In the app, request a magic link.
+4. Copy the token from the API logs.
+5. Open the deep link manually:
+   - iOS sim: `xcrun simctl openurl booted "flipturn://auth?token=<paste>"`
+   - Android emulator: `adb shell am start -a android.intent.action.VIEW -d "flipturn://auth?token=<paste>"`
+
+The mobile app will consume the token and sign you in.
+
+This workaround is dev-only — Plan 6 wires up real Resend delivery for the
+closed beta.

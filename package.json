@@ -26,7 +26,10 @@
     "workers:test": "pnpm --filter @flipturn/workers test",
     "api:dev": "pnpm --filter @flipturn/api dev",
     "api:start": "pnpm --filter @flipturn/api start",
-    "api:test": "pnpm --filter @flipturn/api test"
+    "api:test": "pnpm --filter @flipturn/api test",
+    "mobile:dev": "pnpm --filter @flipturn/mobile start",
+    "mobile:start": "pnpm --filter @flipturn/mobile start",
+    "mobile:test": "pnpm --filter @flipturn/mobile test"
   },
   "devDependencies": {
     "@types/node": "^22.7.0",
