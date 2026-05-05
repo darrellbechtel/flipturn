@@ -135,3 +135,14 @@ export async function isAllowedByRobots(redis: Redis, fullUrl: string): Promise<
 export async function resetRobotsCache(redis: Redis, host: string): Promise<void> {
   await redis.del(robotsKey(host));
 }
+
+/**
+ * Push the host's "last touched" key forward by `delayMs`. The next
+ * `acquireToken` call for this host will block until that delay passes.
+ * Used to honor 429 / Retry-After server signals.
+ */
+export async function applyBackoff(redis: Redis, host: string, delayMs: number): Promise<void> {
+  const futureWindow = Date.now() + delayMs;
+  // 1h TTL matches the existing key TTL.
+  await redis.set(`politeness:last:${host}`, futureWindow.toString(), 'EX', 60 * 60);
+}
