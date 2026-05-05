@@ -1,11 +1,16 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { Redis } from 'ioredis';
 import { acquireToken, resetTokenBucket } from '../src/politeness.js';
+import { isAllowedByRobots, getUserAgent, resetRobotsCache } from '../src/politeness.js';
 
 const TEST_REDIS_URL = 'redis://localhost:56379';
 const TEST_HOST = 'test.example.com';
 
 const redis = new Redis(TEST_REDIS_URL, { maxRetriesPerRequest: null });
+
+afterAll(async () => {
+  await redis.quit();
+});
 
 describe('acquireToken', () => {
   beforeEach(async () => {
@@ -14,7 +19,6 @@ describe('acquireToken', () => {
 
   afterAll(async () => {
     await resetTokenBucket(redis, TEST_HOST);
-    await redis.quit();
   });
 
   it('grants the first token immediately', async () => {
@@ -59,5 +63,24 @@ describe('acquireToken', () => {
     expect(granted1).toBe(true);
     expect(granted2).toBe(true);
     expect(granted3).toBe(false);
+  });
+});
+
+describe('getUserAgent', () => {
+  it('returns the env-configured user-agent', () => {
+    expect(getUserAgent()).toContain('FlipTurnBot');
+  });
+});
+
+describe('isAllowedByRobots', () => {
+  beforeEach(async () => {
+    await resetRobotsCache(redis, 'robots-test.example.com');
+  });
+
+  it('returns true when the host has no robots.txt (fetch error)', async () => {
+    // 'robots-test.example.com' resolves to no real server; the implementation
+    // treats any non-200 / network error as "allowed" (fail-open).
+    const allowed = await isAllowedByRobots(redis, 'http://robots-test.example.com/results/123');
+    expect(allowed).toBe(true);
   });
 });

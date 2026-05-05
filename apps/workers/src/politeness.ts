@@ -1,4 +1,7 @@
 import type { Redis } from 'ioredis';
+import { request } from 'undici';
+import { getEnv } from './env.js';
+import { getLogger } from './logger.js';
 
 export interface TokenBucketOptions {
   /** Minimum interval between token grants in ms. */
@@ -54,4 +57,81 @@ export async function resetTokenBucket(redis: Redis, host: string): Promise<void
   await redis.del(lastTouchKey(host));
   const day = new Date().toISOString().slice(0, 10);
   await redis.del(`politeness:count:${host}:${day}`);
+}
+
+export function getUserAgent(): string {
+  return getEnv().SCRAPE_USER_AGENT;
+}
+
+const robotsKey = (host: string) => `politeness:robots:${host}`;
+const ROBOTS_TTL_S = 24 * 60 * 60; // 24h
+
+interface RobotsRules {
+  /** Disallow paths for our user-agent. Empty array = no restrictions. */
+  readonly disallow: readonly string[];
+}
+
+/**
+ * Fetch and parse robots.txt for a host. Returns "allow everything" on
+ * any error (network, 404, etc.) — fail-open is acceptable here because
+ * scraping etiquette is one consideration among several (see also rate
+ * limiting and source attribution).
+ */
+async function fetchRobots(hostUrl: URL): Promise<RobotsRules> {
+  const robotsUrl = `${hostUrl.protocol}//${hostUrl.host}/robots.txt`;
+  try {
+    const { statusCode, body } = await request(robotsUrl, {
+      method: 'GET',
+      headers: { 'user-agent': getUserAgent() },
+    });
+    if (statusCode !== 200) {
+      return { disallow: [] };
+    }
+    const text = await body.text();
+    return parseRobots(text);
+  } catch (err) {
+    getLogger().warn({ err, robotsUrl }, 'robots.txt fetch failed; allowing all');
+    return { disallow: [] };
+  }
+}
+
+/** Minimal robots.txt parser — supports User-agent and Disallow. */
+function parseRobots(text: string): RobotsRules {
+  const lines = text.split(/\r?\n/);
+  const disallow: string[] = [];
+  let currentApplies = false;
+  for (const raw of lines) {
+    const line = raw.replace(/#.*/, '').trim();
+    if (!line) continue;
+    const [keyRaw, ...rest] = line.split(':');
+    if (!keyRaw || rest.length === 0) continue;
+    const key = keyRaw.trim().toLowerCase();
+    const value = rest.join(':').trim();
+    if (key === 'user-agent') {
+      // Apply if matches our UA token or wildcard.
+      currentApplies = value === '*' || getUserAgent().toLowerCase().includes(value.toLowerCase());
+    } else if (key === 'disallow' && currentApplies && value) {
+      disallow.push(value);
+    }
+  }
+  return { disallow };
+}
+
+export async function isAllowedByRobots(redis: Redis, fullUrl: string): Promise<boolean> {
+  const url = new URL(fullUrl);
+  const cacheKey = robotsKey(url.host);
+  const cached = await redis.get(cacheKey);
+  let rules: RobotsRules;
+  if (cached) {
+    rules = JSON.parse(cached) as RobotsRules;
+  } else {
+    rules = await fetchRobots(url);
+    await redis.set(cacheKey, JSON.stringify(rules), 'EX', ROBOTS_TTL_S);
+  }
+  return !rules.disallow.some((path) => url.pathname.startsWith(path));
+}
+
+/** Test helper. */
+export async function resetRobotsCache(redis: Redis, host: string): Promise<void> {
+  await redis.del(robotsKey(host));
 }
