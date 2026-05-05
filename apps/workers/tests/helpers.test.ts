@@ -74,7 +74,7 @@ describe('hashMeetExternalId', () => {
     expect(a).toMatch(/^synth-[a-f0-9]{12}$/);
   });
 
-  it('produces different hashes for different inputs', () => {
+  it('produces different hashes for different meet names', () => {
     const a = hashMeetExternalId({
       meetName: 'A Meet',
       startDate: new Date('2026-04-01'),
@@ -83,11 +83,20 @@ describe('hashMeetExternalId', () => {
       meetName: 'B Meet',
       startDate: new Date('2026-04-01'),
     });
+    expect(a).not.toBe(b);
+  });
+
+  it('produces the SAME hash for the same meet name across different dates', () => {
+    const a = hashMeetExternalId({
+      meetName: 'A Meet',
+      startDate: new Date('2026-04-01'),
+    });
     const c = hashMeetExternalId({
       meetName: 'A Meet',
       startDate: new Date('2026-04-02'),
     });
-    expect(a).not.toBe(b);
-    expect(a).not.toBe(c);
+    // The date is intentionally NOT part of the hash, so multi-day meets
+    // without SNC links don't fragment into multiple Meet rows.
+    expect(a).toBe(c);
   });
 });

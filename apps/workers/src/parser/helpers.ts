@@ -72,11 +72,14 @@ export interface MeetIdSeed {
 /**
  * Build a stable synthesized meetExternalId for swims whose source row
  * doesn't include a real SNC meet ID. The hash is deterministic across
- * scrapes of the same meet — same name + same start date → same id.
+ * scrapes of the same meet — same name → same id.
  */
 export function hashMeetExternalId(seed: MeetIdSeed): string {
-  const dayStr = seed.startDate.toISOString().slice(0, 10);
-  const input = `${seed.meetName.trim().toLowerCase()}|${dayStr}`;
+  // We deliberately do NOT include the date in the hash.
+  // A multi-day no-link meet would otherwise produce a different hash for
+  // each day's swims, fragmenting one logical meet into N Meet rows.
+  // Same-name-different-year collisions are accepted as the lesser evil.
+  const input = seed.meetName.trim().toLowerCase();
   const hash = createHash('sha256').update(input).digest('hex').slice(0, 12);
   return `synth-${hash}`;
 }
