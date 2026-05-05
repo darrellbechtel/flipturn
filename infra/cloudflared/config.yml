@@ -1,0 +1,28 @@
+# Cloudflare Tunnel config for the Flip Turn API.
+#
+# Setup steps (one-time, on the Mac Mini):
+#   1. brew install cloudflared
+#   2. cloudflared tunnel login              # opens browser, OAuth to Cloudflare
+#   3. cloudflared tunnel create flipturn-prod
+#   4. Copy this file to ~/.config/cloudflared/config.yml and substitute
+#      <TUNNEL_UUID> below with the UUID printed by `tunnel create`.
+#      The credentials JSON is written by `tunnel create` to
+#      ~/.cloudflared/<TUNNEL_UUID>.json — leave it there and reference it
+#      via `credentials-file` below.
+#   5. Add a CNAME record in the Cloudflare DNS panel:
+#         api.flipturn.app  ->  <TUNNEL_UUID>.cfargotunnel.com
+#      (or: cloudflared tunnel route dns flipturn-prod api.flipturn.app)
+#   6. Test: cloudflared tunnel run flipturn-prod
+#      Then curl https://api.flipturn.app/v1/health  ->  {"db":"ok","redis":"ok"}
+#   7. Wire into pm2: see infra/pm2/ecosystem.config.cjs
+
+# Replace <TUNNEL_UUID> with the tunnel's UUID printed by `tunnel create`.
+tunnel: <TUNNEL_UUID>
+credentials-file: /Users/darrell/.cloudflared/<TUNNEL_UUID>.json
+
+ingress:
+  - hostname: api.flipturn.app
+    service: http://localhost:3000
+
+  # Catch-all (required by cloudflared)
+  - service: http_status:404
