@@ -28,7 +28,9 @@ describe('tickScheduler', () => {
   });
 
   beforeEach(async () => {
+    await prisma.magicLinkToken.deleteMany();
     await prisma.athlete.deleteMany();
+    await prisma.user.deleteMany();
     vi.clearAllMocks();
   });
 
@@ -72,5 +74,41 @@ describe('tickScheduler', () => {
     const result = await tickScheduler(prisma);
     expect(result.enqueued).toBe(0);
     expect(enqueueScrapeAthlete).not.toHaveBeenCalled();
+  });
+
+  describe('magic link cleanup', () => {
+    it('hard-deletes magic-link tokens expired more than 24h ago', async () => {
+      const user = await prisma.user.create({ data: { email: 'cleanup@example.com' } });
+      const fresh = await prisma.magicLinkToken.create({
+        data: {
+          userId: user.id,
+          tokenHash: 'h-fresh',
+          expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        },
+      });
+      const justExpired = await prisma.magicLinkToken.create({
+        data: {
+          userId: user.id,
+          tokenHash: 'h-just',
+          expiresAt: new Date(Date.now() - 1000),
+        },
+      });
+      const longExpired = await prisma.magicLinkToken.create({
+        data: {
+          userId: user.id,
+          tokenHash: 'h-long',
+          expiresAt: new Date(Date.now() - 25 * 60 * 60 * 1000),
+        },
+      });
+
+      const { tickScheduler } = await import('../src/scheduler.js');
+      await tickScheduler(prisma);
+
+      const remaining = await prisma.magicLinkToken.findMany({ where: { userId: user.id } });
+      const ids = remaining.map((r) => r.id);
+      expect(ids).toContain(fresh.id);
+      expect(ids).toContain(justExpired.id);
+      expect(ids).not.toContain(longExpired.id);
+    });
   });
 });

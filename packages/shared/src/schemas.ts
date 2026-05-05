@@ -25,9 +25,11 @@ export const AthleteDtoSchema = z.object({
   id: z.string(),
   sncId: z.string(),
   primaryName: z.string(),
-  gender: z.enum(GENDERS).optional(),
-  homeClub: z.string().optional(),
-  lastScrapedAt: z.coerce.date().optional(),
+  // Prisma columns are nullable, so the API returns `null` (not omitted)
+  // for unset values. Accept both null and undefined to match wire shape.
+  gender: z.enum(GENDERS).nullable().optional(),
+  homeClub: z.string().nullable().optional(),
+  lastScrapedAt: z.coerce.date().nullable().optional(),
 });
 export type AthleteDto = z.infer<typeof AthleteDtoSchema>;
 
@@ -38,7 +40,8 @@ export const SwimDtoSchema = z.object({
   eventKey: z.string(),
   timeCentiseconds: z.number().int().nonnegative(),
   splits: z.array(z.number().int().nonnegative()),
-  place: z.number().int().positive().optional(),
+  // place is `Int?` in Prisma, so the API can return `null`.
+  place: z.number().int().positive().nullable().optional(),
   status: z.enum(SWIM_STATUSES),
   meetName: z.string(),
   swamAt: z.coerce.date(),
