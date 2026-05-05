@@ -23,7 +23,10 @@
     "dev:logs": "docker compose -f compose.dev.yaml logs -f",
     "workers:dev": "pnpm --filter @flipturn/workers dev",
     "workers:start": "pnpm --filter @flipturn/workers start",
-    "workers:test": "pnpm --filter @flipturn/workers test"
+    "workers:test": "pnpm --filter @flipturn/workers test",
+    "api:dev": "pnpm --filter @flipturn/api dev",
+    "api:start": "pnpm --filter @flipturn/api start",
+    "api:test": "pnpm --filter @flipturn/api test"
   },
   "devDependencies": {
     "@types/node": "^22.7.0",
