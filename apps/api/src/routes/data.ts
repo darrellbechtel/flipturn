@@ -42,8 +42,10 @@ export function dataRoutes(deps: AppDeps): Hono {
     const swims = await deps.prisma.swim.findMany({
       where,
       take: q.limit + 1,
-      orderBy: [{ scrapedAt: 'desc' }, { id: 'desc' }],
-      include: { meet: { select: { name: true } } },
+      // Sort by race date (not scrape time) so the order matches the user's
+      // mental model and is stable across re-scrapes.
+      orderBy: [{ meet: { startDate: 'desc' } }, { id: 'desc' }],
+      include: { meet: { select: { name: true, startDate: true } } },
       ...(q.cursor ? { cursor: { id: q.cursor }, skip: 1 } : {}),
     });
     const hasMore = swims.length > q.limit;
@@ -58,7 +60,9 @@ export function dataRoutes(deps: AppDeps): Hono {
         place: s.place,
         status: s.status,
         meetName: s.meet.name,
-        swamAt: s.scrapedAt.toISOString(),
+        // The actual race date — not scrapedAt, which is when the scraper
+        // wrote the row.
+        swamAt: s.meet.startDate.toISOString(),
       })),
       nextCursor,
     });

@@ -29,10 +29,16 @@ export function sessionMiddleware(prisma: PrismaClient) {
     if (!session || session.revokedAt) {
       throw new ApiError(401, 'Invalid session', 'unauthenticated');
     }
-    void prisma.session.update({
-      where: { id: session.id },
-      data: { lastUsedAt: new Date() },
-    });
+    // Best-effort housekeeping; ignore failures so a transient DB error
+    // doesn't surface as an unhandledRejection.
+    prisma.session
+      .update({
+        where: { id: session.id },
+        data: { lastUsedAt: new Date() },
+      })
+      .catch(() => {
+        // intentionally swallowed
+      });
     c.set('auth', { user: session.user, session });
     await next();
   };

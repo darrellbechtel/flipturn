@@ -46,24 +46,34 @@ export function authRoutes(deps: AppDeps): Hono {
     const tokenHash = hashToken(token);
     const row = await deps.prisma.magicLinkToken.findUnique({ where: { tokenHash } });
     if (!row) {
-      throw new ApiError(401, 'Invalid token', 'invalid_token');
+      throw new ApiError(401, 'Invalid or expired token', 'invalid_token');
     }
     if (row.consumedAt) {
-      throw new ApiError(401, 'Token already used', 'invalid_token');
+      throw new ApiError(401, 'Invalid or expired token', 'invalid_token');
     }
     if (row.expiresAt.getTime() < Date.now()) {
-      throw new ApiError(401, 'Token expired', 'invalid_token');
+      throw new ApiError(401, 'Invalid or expired token', 'invalid_token');
     }
+
     const sessionTokenPlain = generateSessionToken();
-    await deps.prisma.$transaction([
-      deps.prisma.magicLinkToken.update({
-        where: { id: row.id },
-        data: { consumedAt: new Date() },
-      }),
-      deps.prisma.session.create({
-        data: { userId: row.userId, tokenHash: hashToken(sessionTokenPlain) },
-      }),
-    ]);
+    const sessionTokenHash = hashToken(sessionTokenPlain);
+
+    // Atomically mark consumed only if it's still unconsumed. Closes the
+    // TOCTOU race where two concurrent /consume calls both pass the
+    // pre-transaction check and both issue sessions.
+    const updateResult = await deps.prisma.magicLinkToken.updateMany({
+      where: { id: row.id, consumedAt: null },
+      data: { consumedAt: new Date() },
+    });
+    if (updateResult.count === 0) {
+      // Lost the race — another consume call already marked it.
+      throw new ApiError(401, 'Invalid or expired token', 'invalid_token');
+    }
+
+    await deps.prisma.session.create({
+      data: { userId: row.userId, tokenHash: sessionTokenHash },
+    });
+
     return c.json({ sessionToken: sessionTokenPlain });
   });
 
