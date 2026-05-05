@@ -1,5 +1,26 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
+import { useState } from 'react';
+import { AuthProvider } from '../auth/AuthProvider.js';
 
 export default function RootLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 30_000,
+            retry: 1,
+          },
+        },
+      }),
+  );
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <Stack screenOptions={{ headerShown: false }} />
+      </AuthProvider>
+    </QueryClientProvider>
+  );
 }
