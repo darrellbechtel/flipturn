@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Screen } from '../../components/Screen.js';
 import { Loading } from '../../components/Loading.js';
@@ -50,6 +50,7 @@ export default function Home() {
           onPress={signOut}
           style={{ marginTop: spacing.md }}
         />
+        <AboutLink />
       </Screen>
     );
   }
@@ -119,7 +120,23 @@ export default function Home() {
         onPress={signOut}
         style={{ marginTop: spacing.xl }}
       />
+      <AboutLink />
     </Screen>
+  );
+}
+
+function AboutLink() {
+  return (
+    <Pressable
+      onPress={() =>
+        Linking.openURL(
+          'https://github.com/darrellbechtel/flipturn/blob/main/docs/legal/privacy-policy.md',
+        )
+      }
+      style={{ marginTop: spacing.md, alignSelf: 'center' }}
+    >
+      <Text style={{ color: colors.textMuted, fontSize: 12 }}>Privacy · Terms · Contact</Text>
+    </Pressable>
   );
 }
 
