@@ -43,7 +43,38 @@ resolve on the device.
 - `lib/` — utilities (env, time formatting)
 - `tests/` — Vitest unit tests (no RN component tests in MVP)
 
-## Manual smoke testing
+## Demo mode (instant sign-in with pre-populated data)
+
+For a quick first look without going through the magic-link round-trip
+or waiting for a live scrape, run the fixture seeder:
+
+```bash
+pnpm dev:up                  # postgres + redis
+pnpm db:reset                # fresh DB (optional but cleaner)
+pnpm api:dev                 # API in another terminal
+pnpm mobile:dev              # Expo dev server in another terminal
+pnpm db:seed-fixture         # parses Cochrane fixture, creates demo user, prints sign-in deep link
+```
+
+The seeder:
+
+- Parses the captured Ryan Cochrane fixture and reconciles 39 swims + 33 PBs into the DB
+- Creates a `demo@flipturn.local` user and links it to Cochrane
+- Mints a fresh single-use magic-link token (15-minute TTL) and prints the deep link
+
+Open the printed `flipturn://auth?token=…` URL on your simulator/device:
+
+- iOS Simulator: `xcrun simctl openurl booted "flipturn://auth?token=…"`
+- Android emulator: `adb shell am start -W -a android.intent.action.VIEW -d "flipturn://auth?token=…"`
+- Physical iPhone with Expo Go: paste into Notes, tap, accept the redirect
+
+The home screen will show Cochrane's PBs grouped by stroke; tap any PB to see the progression chart and swim history. Re-run `pnpm db:seed-fixture` any time to mint a fresh sign-in token.
+
+Demo mode bypasses both the magic-link email round-trip and the worker scrape pipeline (which can hit Cloudflare 403s from non-residential IPs). Plan 6 hardens the live auth and scrape flows for the closed beta.
+
+## Manual smoke testing (live magic-link flow)
+
+If you want to exercise the actual magic-link flow rather than the demo seeder:
 
 Without a Resend API key, the API uses an in-memory email sender — magic-link
 emails are captured in process memory and not actually sent. To complete the
