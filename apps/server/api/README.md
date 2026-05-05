@@ -46,6 +46,6 @@ All authenticated endpoints require `Authorization: Bearer <sessionToken>`.
 - Onboarding enqueues a worker scrape via `enqueueScrapeAthlete` from
   `@flipturn/workers/queue`.
 
-See [`docs/adr/0004-auth-design.md`](../../docs/adr/0004-auth-design.md) for
-the auth model details and [`docs/superpowers/specs/2026-05-04-flipturn-mvp-design.md`](../../docs/superpowers/specs/2026-05-04-flipturn-mvp-design.md)
+See [`docs/adr/0004-auth-design.md`](../../../docs/adr/0004-auth-design.md) for
+the auth model details and [`docs/superpowers/specs/2026-05-04-01-flipturn-mvp-design.md`](../../../docs/superpowers/specs/2026-05-04-01-flipturn-mvp-design.md)
 §7 for the full API surface.
