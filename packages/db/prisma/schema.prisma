@@ -175,11 +175,11 @@ model Swim {
   sourceUrl  String?
   scrapedAt  DateTime @default(now())
 
-  supersedesId String?
-  supersedes   Swim?          @relation("SwimVersion", fields: [supersedesId], references: [id])
-  supersededBy Swim[]         @relation("SwimVersion")
-  isCurrent    Boolean        @default(true)
-  PersonalBest PersonalBest[]
+  supersedesId  String?
+  supersedes    Swim?          @relation("SwimVersion", fields: [supersedesId], references: [id])
+  supersededBy  Swim[]         @relation("SwimVersion")
+  isCurrent     Boolean        @default(true)
+  personalBests PersonalBest[]
 
   @@unique([athleteId, meetId, eventId])
   @@index([athleteId, eventKey])
