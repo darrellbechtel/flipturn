@@ -60,6 +60,21 @@ export function startScrapeWorker(): Worker<ScrapeAthleteJob> {
   return worker;
 }
 
+export function startSchedulerWorker(): Worker {
+  const log = getLogger();
+  const w = new Worker(
+    'flipturn-scheduler',
+    async () => {
+      // Lazy import to avoid circular import if scheduler.ts grows
+      const { tickScheduler } = await import('./scheduler.js');
+      await tickScheduler();
+    },
+    { connection: getRedis(), concurrency: 1 },
+  );
+  w.on('failed', (job, err) => log.error({ jobId: job?.id, err }, 'scheduler tick failed'));
+  return w;
+}
+
 /**
  * Build the source URL for an SNC athlete. This is a Plan 2 placeholder.
  * Per ADR 0002, the real URL is `https://www.swimming.ca/swimmer/<id>/`,

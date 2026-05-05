@@ -1,7 +1,8 @@
 import { getEnv } from './env.js';
 import { getLogger } from './logger.js';
 import { initSentry } from './sentry.js';
-import { startScrapeWorker } from './worker.js';
+import { startScrapeWorker, startSchedulerWorker } from './worker.js';
+import { startScheduler } from './scheduler.js';
 import { startHeartbeat, stopHeartbeat } from './heartbeat.js';
 import { disconnectRedis } from './redis.js';
 
@@ -11,14 +12,17 @@ async function main() {
   const log = getLogger();
   log.info('flipturn workers starting');
 
-  const worker = startScrapeWorker();
+  const scrapeWorker = startScrapeWorker();
+  const schedulerWorker = startSchedulerWorker();
+  await startScheduler();
   startHeartbeat();
-  log.info('worker + heartbeat running; ctrl-c to stop');
+  log.info('workers + scheduler + heartbeat running; ctrl-c to stop');
 
   const shutdown = async (signal: string) => {
     log.info({ signal }, 'shutting down');
     stopHeartbeat();
-    await worker.close();
+    await scrapeWorker.close();
+    await schedulerWorker.close();
     await disconnectRedis();
     process.exit(0);
   };
