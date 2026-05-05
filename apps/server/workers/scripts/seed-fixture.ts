@@ -15,6 +15,7 @@
  */
 
 import { readFile } from 'node:fs/promises';
+import { networkInterfaces } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash, randomBytes } from 'node:crypto';
@@ -80,23 +81,50 @@ async function main(): Promise<void> {
   console.log(`   Athlete:    ${snapshot.primaryName} (sncId ${COCHRANE_SNC_ID})`);
   console.log(`   Swims:      ${swimsTouched}`);
   console.log(`   PBs:        ${pbResult.created}`);
+  const lanIp = firstLanIPv4();
+  const expoSimUrl = `exp://localhost:8081/--/auth?token=${tokenPlain}`;
+  const expoLanUrl = lanIp
+    ? `exp://${lanIp}:8081/--/auth?token=${tokenPlain}`
+    : null;
+
   console.log('');
   console.log('🔗 One-shot sign-in deep link (15 min, single-use):');
   console.log('');
+  console.log('   ── If you are running Expo Go (default `pnpm mobile:dev`) ──');
+  console.log('');
+  console.log('   iOS Simulator on this Mac:');
+  console.log(`     xcrun simctl openurl booted "${expoSimUrl}"`);
+  if (expoLanUrl) {
+    console.log('');
+    console.log('   Physical iPhone or Android device with Expo Go (same WiFi):');
+    console.log(`     ${expoLanUrl}`);
+    console.log('     (paste into Notes/Messages on the device, tap to open in Expo Go)');
+  }
+  console.log('');
+  console.log('   ── If you are running a custom dev build or release build ──');
+  console.log('');
   console.log(`   ${deepLink}`);
   console.log('');
-  console.log('   iOS Simulator:');
-  console.log(`     xcrun simctl openurl booted "${deepLink}"`);
-  console.log('');
-  console.log('   Android emulator:');
-  console.log(`     adb shell am start -W -a android.intent.action.VIEW -d "${deepLink}"`);
-  console.log('');
+  console.log(`     iOS Simulator:  xcrun simctl openurl booted "${deepLink}"`);
   console.log(
-    '   Physical iPhone with Expo Go: paste the link into Notes, tap it, accept the redirect to Expo Go.',
+    `     Android:        adb shell am start -W -a android.intent.action.VIEW -d "${deepLink}"`,
   );
   console.log('');
 
   await disconnectPrisma();
+}
+
+/** Return the first non-internal IPv4 address, or null if none. */
+function firstLanIPv4(): string | null {
+  const ifaces = networkInterfaces();
+  for (const list of Object.values(ifaces)) {
+    for (const info of list ?? []) {
+      if (info.family === 'IPv4' && !info.internal) {
+        return info.address;
+      }
+    }
+  }
+  return null;
 }
 
 main().catch((err) => {
