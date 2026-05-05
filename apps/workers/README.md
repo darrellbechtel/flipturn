@@ -39,3 +39,28 @@ JSON vs. Playwright) only affects the parser layer.
 - `worker.ts` — pipeline: fetch → parse → reconcile → PB recompute
 - `scheduler.ts` — daily cron enqueuer
 - `heartbeat.ts` — Redis liveness key
+
+## Current state (Plan 2)
+
+This package ships the worker plumbing only:
+
+- ✅ BullMQ + Redis client + queue
+- ✅ Politeness (token bucket, robots.txt cache, user-agent)
+- ✅ Raw artifact archive on disk
+- ✅ Idempotent reconciler against Postgres
+- ✅ PersonalBest recompute
+- ✅ Daily scheduler via BullMQ repeatable jobs
+- ✅ Heartbeat key in Redis
+- ✅ End-to-end integration test against the stub parser
+- 🟡 **Stub parser** returning hardcoded data — replaced in Plan 3
+
+To enqueue a job manually for local testing:
+
+```ts
+import { enqueueScrapeAthlete } from './src/queue.js';
+await enqueueScrapeAthlete({
+  athleteId: '<some athlete id>',
+  sncId: 'DEMO-SARAH-001',
+  fixtureName: 'demo-sarah',
+});
+```
