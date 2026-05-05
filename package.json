@@ -18,6 +18,7 @@
     "db:migrate": "pnpm --filter @flipturn/db migrate",
     "db:seed": "pnpm --filter @flipturn/db seed",
     "db:reset": "pnpm --filter @flipturn/db reset",
+    "db:seed-fixture": "pnpm --filter @flipturn/workers seed-fixture",
     "dev:up": "docker compose -f compose.dev.yaml up -d",
     "dev:down": "docker compose -f compose.dev.yaml down",
     "dev:logs": "docker compose -f compose.dev.yaml logs -f",
