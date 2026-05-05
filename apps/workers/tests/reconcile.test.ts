@@ -100,4 +100,14 @@ describe('reconcile', () => {
       expect(swim.eventKey).toMatch(/^\d+_(FR|BK|BR|FL|IM)_(SCM|LCM|SCY)$/);
     }
   });
+
+  it('writes the snapshot dataSource onto every swim', async () => {
+    const snap = DEMO_SARAH;
+    await reconcile(prisma, snap);
+    const swims = await prisma.swim.findMany();
+    expect(swims.length).toBeGreaterThan(0);
+    for (const swim of swims) {
+      expect(swim.dataSource).toBe(snap.dataSource);
+    }
+  });
 });

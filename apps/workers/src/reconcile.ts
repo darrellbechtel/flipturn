@@ -105,7 +105,7 @@ export async function reconcile(
           place: record.place ?? null,
           status: record.status,
           eventKey,
-          dataSource: 'results.swimming.ca',
+          dataSource: snapshot.dataSource,
         },
       });
 

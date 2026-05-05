@@ -11,7 +11,7 @@ export const DEMO_SARAH: AthleteSnapshot = {
   primaryName: 'Sarah Demo',
   gender: 'F',
   homeClub: 'Waterloo Region Aquatics',
-  dataSource: 'stub',
+  dataSource: 'www.swimming.ca',
   swims: [
     {
       meetExternalId: 'DEMO-MEET-001',
