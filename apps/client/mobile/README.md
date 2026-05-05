@@ -42,3 +42,23 @@ resolve on the device.
 - `components/` — RN components shared across screens
 - `lib/` — utilities (env, time formatting)
 - `tests/` — Vitest unit tests (no RN component tests in MVP)
+
+## Manual smoke testing
+
+Without a Resend API key, the API uses an in-memory email sender — magic-link
+emails are captured in process memory and not actually sent. To complete the
+sign-in flow during local dev:
+
+1. Briefly add `console.log('magic-link token:', tokenPlain)` to
+   `apps/server/api/src/routes/auth.ts` inside the magic-link/request handler.
+2. Restart the API: `pnpm api:dev`.
+3. In the app, request a magic link.
+4. Copy the token from the API logs.
+5. Open the deep link manually:
+   - iOS sim: `xcrun simctl openurl booted "flipturn://auth?token=<paste>"`
+   - Android emulator: `adb shell am start -a android.intent.action.VIEW -d "flipturn://auth?token=<paste>"`
+
+The mobile app will consume the token and sign you in.
+
+This workaround is dev-only — Plan 6 wires up real Resend delivery for the
+closed beta.
