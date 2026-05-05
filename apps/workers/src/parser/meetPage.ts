@@ -214,6 +214,9 @@ function extractEvents($: cheerio.CheerioAPI): MeetEventRecord[] {
 
 function parseGenderedListRow(
   $: cheerio.CheerioAPI,
+  // cheerio's element-row type is awkward to express without pulling in
+  // domhandler as a direct dep; the row is a <tr> from an .each() iterator.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   $tr: cheerio.Cheerio<any>,
   cls: 'genderM' | 'genderF',
   gender: Gender,

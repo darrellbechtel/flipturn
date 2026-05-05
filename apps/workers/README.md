@@ -40,19 +40,19 @@ JSON vs. Playwright) only affects the parser layer.
 - `scheduler.ts` — daily cron enqueuer
 - `heartbeat.ts` — Redis liveness key
 
-## Current state (Plan 2)
+## Current state (Plan 3)
 
-This package ships the worker plumbing only:
+This package ships the full scrape pipeline:
 
-- ✅ BullMQ + Redis client + queue
-- ✅ Politeness (token bucket, robots.txt cache, user-agent)
-- ✅ Raw artifact archive on disk
-- ✅ Idempotent reconciler against Postgres
-- ✅ PersonalBest recompute
-- ✅ Daily scheduler via BullMQ repeatable jobs
-- ✅ Heartbeat key in Redis
-- ✅ End-to-end integration test against the stub parser
-- 🟡 **Stub parser** returning hardcoded data — replaced in Plan 3
+- BullMQ + Redis client + queue
+- Politeness (token bucket, robots.txt cache, user-agent, **429/Retry-After backoff**)
+- Raw artifact archive on disk
+- Idempotent reconciler against Postgres (with snapshot-driven `dataSource`)
+- PersonalBest recompute (single-query, DQ handling, idempotent)
+- Daily scheduler via BullMQ repeatable jobs (with unit test)
+- Heartbeat key in Redis
+- **Real cheerio parsers** for `www.swimming.ca/swimmer/<id>/` and `results.swimming.ca/<slug>/`
+- End-to-end integration test using captured fixtures
 
 To enqueue a job manually for local testing:
 
@@ -60,7 +60,10 @@ To enqueue a job manually for local testing:
 import { enqueueScrapeAthlete } from './src/queue.js';
 await enqueueScrapeAthlete({
   athleteId: '<some athlete id>',
-  sncId: 'DEMO-SARAH-001',
-  fixtureName: 'demo-sarah',
+  sncId: '4030816',
 });
 ```
+
+See [`docs/adr/0002-snc-data-source.md`](../../docs/adr/0002-snc-data-source.md)
+and [`docs/adr/0003-parser-architecture.md`](../../docs/adr/0003-parser-architecture.md)
+for the design decisions.
