@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@babel/runtime": "^7.29.2",
     "@flipturn/shared": "workspace:*",
     "@tanstack/react-query": "^5.59.0",
     "expo": "~52.0.0",
