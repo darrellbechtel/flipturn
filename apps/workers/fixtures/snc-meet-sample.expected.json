@@ -1,0 +1,125 @@
+{
+  "meet": {
+    "externalId": "2026_Speedo_Canadian_Swimming_Open",
+    "name": "2026 Speedo Canadian Swimming Open",
+    "course": "LCM",
+    "location": "Edmonton, AB, CAN",
+    "startDate": "2026-04-09T00:00:00.000Z",
+    "endDate": "2026-04-11T00:00:00.000Z",
+    "sanctionBody": "SNC"
+  },
+  "events": [
+    {
+      "distanceM": 50,
+      "stroke": "FR",
+      "gender": "M",
+      "ageBand": "Open",
+      "round": "FINAL"
+    },
+    {
+      "distanceM": 50,
+      "stroke": "FR",
+      "gender": "F",
+      "ageBand": "Open",
+      "round": "FINAL"
+    },
+    {
+      "distanceM": 50,
+      "stroke": "FR",
+      "gender": "M",
+      "ageBand": "Open",
+      "round": "PRELIM"
+    },
+    {
+      "distanceM": 50,
+      "stroke": "FR",
+      "gender": "F",
+      "ageBand": "Open",
+      "round": "PRELIM"
+    },
+    {
+      "distanceM": 100,
+      "stroke": "FR",
+      "gender": "M",
+      "ageBand": "Open",
+      "round": "FINAL"
+    },
+    {
+      "distanceM": 100,
+      "stroke": "FR",
+      "gender": "F",
+      "ageBand": "Open",
+      "round": "FINAL"
+    },
+    {
+      "distanceM": 100,
+      "stroke": "FR",
+      "gender": "M",
+      "ageBand": "Open",
+      "round": "PRELIM"
+    },
+    {
+      "distanceM": 100,
+      "stroke": "FR",
+      "gender": "F",
+      "ageBand": "Open",
+      "round": "PRELIM"
+    },
+    {
+      "distanceM": 200,
+      "stroke": "FR",
+      "gender": "F",
+      "ageBand": "Open",
+      "round": "FINAL"
+    },
+    {
+      "distanceM": 200,
+      "stroke": "FR",
+      "gender": "M",
+      "ageBand": "Open",
+      "round": "FINAL"
+    },
+    {
+      "distanceM": 100,
+      "stroke": "BK",
+      "gender": "M",
+      "ageBand": "Open",
+      "round": "FINAL"
+    },
+    {
+      "distanceM": 100,
+      "stroke": "BK",
+      "gender": "F",
+      "ageBand": "Open",
+      "round": "FINAL"
+    },
+    {
+      "distanceM": 100,
+      "stroke": "BR",
+      "gender": "M",
+      "ageBand": "Open",
+      "round": "FINAL"
+    },
+    {
+      "distanceM": 100,
+      "stroke": "FL",
+      "gender": "F",
+      "ageBand": "Open",
+      "round": "FINAL"
+    },
+    {
+      "distanceM": 200,
+      "stroke": "IM",
+      "gender": "M",
+      "ageBand": "Open",
+      "round": "FINAL"
+    },
+    {
+      "distanceM": 400,
+      "stroke": "IM",
+      "gender": "F",
+      "ageBand": "Open",
+      "round": "FINAL"
+    }
+  ]
+}

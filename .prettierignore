@@ -11,5 +11,8 @@ pnpm-lock.yaml
 # raw scrape archives (gitignored anyway, but keep prettier off them)
 data/
 
+# captured third-party fixtures — preserve byte-for-byte as captured
+apps/workers/fixtures/*.html
+
 # generated migrations
 **/prisma/migrations/**
