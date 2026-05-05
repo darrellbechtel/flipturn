@@ -9,8 +9,9 @@ import { fileURLToPath } from 'node:url';
  * calls process.exit(1) on missing fields). This setup file fills that gap
  * without adding a dotenv dependency.
  *
- * Existing process.env values win over the .env file (so CI / shell overrides
- * still work).
+ * Existing real process.env values win over the .env file (so CI / shell
+ * overrides still work). Vitest's own injected defaults (e.g. BASE_URL="/")
+ * are detected and overridden.
  */
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const envPath = resolve(__dirname, '../../../.env');
@@ -36,7 +37,11 @@ try {
       if (hash >= 0) value = value.slice(0, hash);
       value = value.trim();
     }
-    if (process.env[key] === undefined) {
+    // Vitest injects BASE_URL="/" and similar; treat those as missing so
+    // .env can override them. Real shell-provided values (anything else)
+    // still win.
+    const existing = process.env[key];
+    if (existing === undefined || existing === '' || existing === '/') {
       process.env[key] = value;
     }
   }

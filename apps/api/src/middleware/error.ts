@@ -13,23 +13,36 @@ export class ApiError extends Error {
   }
 }
 
+/** Hono `onError` handler — Hono's compose intercepts thrown errors before
+ *  any try/catch middleware can see them, so error handling must be wired
+ *  via `app.onError()` (and on each sub-app mounted via `app.route()`). */
+export function errorHandler(err: Error, c: Context): Response {
+  const log = getLogger();
+  if (err instanceof ApiError) {
+    log.warn({ err, status: err.status, code: err.code }, 'api error');
+    return c.json(
+      { error: { code: err.code ?? 'api_error', message: err.message } },
+      err.status as 400 | 401 | 403 | 404 | 409,
+    );
+  }
+  if (err instanceof ZodError) {
+    log.warn({ err: err.flatten() }, 'validation error');
+    return c.json({ error: { code: 'validation_error', issues: err.flatten() } }, 400);
+  }
+  log.error({ err }, 'unhandled error');
+  return c.json({ error: { code: 'internal_error', message: 'Internal Server Error' } }, 500);
+}
+
+/** Back-compat middleware wrapper. Prefer wiring `errorHandler` via
+ *  `app.onError(errorHandler)` — Hono's compose intercepts errors before
+ *  this middleware's catch can see them. */
 export async function errorMiddleware(c: Context, next: Next): Promise<Response | void> {
   try {
     await next();
   } catch (err) {
-    const log = getLogger();
-    if (err instanceof ApiError) {
-      log.warn({ err, status: err.status, code: err.code }, 'api error');
-      return c.json(
-        { error: { code: err.code ?? 'api_error', message: err.message } },
-        err.status as 400 | 401 | 403 | 404 | 409,
-      );
+    if (err instanceof Error) {
+      return errorHandler(err, c);
     }
-    if (err instanceof ZodError) {
-      log.warn({ err: err.flatten() }, 'validation error');
-      return c.json({ error: { code: 'validation_error', issues: err.flatten() } }, 400);
-    }
-    log.error({ err }, 'unhandled error');
-    return c.json({ error: { code: 'internal_error', message: 'Internal Server Error' } }, 500);
+    throw err;
   }
 }
