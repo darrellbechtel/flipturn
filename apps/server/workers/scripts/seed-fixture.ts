@@ -83,9 +83,7 @@ async function main(): Promise<void> {
   console.log(`   PBs:        ${pbResult.created}`);
   const lanIp = firstLanIPv4();
   const expoSimUrl = `exp://localhost:8081/--/auth?token=${tokenPlain}`;
-  const expoLanUrl = lanIp
-    ? `exp://${lanIp}:8081/--/auth?token=${tokenPlain}`
-    : null;
+  const expoLanUrl = lanIp ? `exp://${lanIp}:8081/--/auth?token=${tokenPlain}` : null;
 
   console.log('');
   console.log('🔗 One-shot sign-in deep link (15 min, single-use):');
