@@ -4,6 +4,7 @@ import type { EmailSender } from './email.js';
 import { errorHandler } from './middleware/error.js';
 import { authRoutes } from './routes/auth.js';
 import { athletesRoutes, userAthletesRoutes } from './routes/athletes.js';
+import { dataRoutes } from './routes/data.js';
 
 export interface AppDeps {
   readonly prisma: PrismaClient;
@@ -19,6 +20,7 @@ export function createApp(deps: AppDeps): Hono {
 
   app.route('/v1/auth', authRoutes(deps));
   app.route('/v1/athletes', athletesRoutes(deps));
+  app.route('/v1/athletes', dataRoutes(deps));
   app.route('/v1/user-athletes', userAthletesRoutes(deps));
 
   app.get('/v1/health', (c) => c.json({ ok: true }));
