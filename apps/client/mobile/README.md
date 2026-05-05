@@ -43,6 +43,17 @@ resolve on the device.
 - `lib/` — utilities (env, time formatting)
 - `tests/` — Vitest unit tests (no RN component tests in MVP)
 
+## Brand assets
+
+Plan 6 ships placeholder icons (white "F" wordmark on navy `#1F3D5C`).
+Final designer-built mark with maple-leaf + swimmer + waves silhouette
+ships post-MVP. To replace:
+
+1. Get final 1024×1024 PNGs (icon, adaptive-icon foreground) and 1284×2778
+   portrait splash from the designer.
+2. Drop into `apps/client/mobile/assets/`, overwriting the placeholders.
+3. Re-build via EAS: `npx eas-cli build --profile development --platform all`.
+
 ## Demo mode (instant sign-in with pre-populated data)
 
 For a quick first look without going through the magic-link round-trip
