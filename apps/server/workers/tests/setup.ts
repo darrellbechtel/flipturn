@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
  * still work).
  */
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const envPath = resolve(__dirname, '../../../.env');
+const envPath = resolve(__dirname, '../../../../.env');
 try {
   const content = readFileSync(envPath, 'utf8');
   for (const rawLine of content.split(/\r?\n/)) {
