@@ -1,26 +1,35 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { execSync } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { PrismaClient } from '@flipturn/db';
 import { Queue, Worker, QueueEvents } from 'bullmq';
 import { Redis } from 'ioredis';
 import { reconcile } from '../src/reconcile.js';
 import { recomputePersonalBests } from '../src/personalBest.js';
-import { DEMO_SARAH } from './fixtures/demoSnapshots.js';
+import { parseAthletePage } from '../src/parser/athletePage.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const FIXTURE = join(__dirname, '..', 'fixtures', 'snc-athlete-sample.html');
 
 const TEST_DB = `flipturn_pipeline_test_${Date.now()}`;
 const TEST_URL = `postgresql://flipturn:flipturn_dev@localhost:55432/${TEST_DB}?schema=public`;
 const TEST_REDIS_URL = 'redis://localhost:56379';
 const QUEUE_NAME = `pipeline-test-${Date.now()}`;
+const SNC_ID = '4030816'; // Ryan Cochrane — fixture athlete
 
 let prisma: PrismaClient;
 let redis: Redis;
 let queue: Queue;
 let worker: Worker;
 let events: QueueEvents;
+let html: string;
 
-// Re-enabled in Plan 3 Task 8 with a mocked fetch path.
-describe.skip('pipeline integration', () => {
+describe('pipeline integration (real parser, mocked fetch)', () => {
   beforeAll(async () => {
+    html = await readFile(FIXTURE, 'utf8');
+
     execSync(
       `docker exec flipturn-postgres psql -U flipturn -d flipturn -c "CREATE DATABASE ${TEST_DB};"`,
       { stdio: 'pipe' },
@@ -38,11 +47,13 @@ describe.skip('pipeline integration', () => {
 
     worker = new Worker(
       QUEUE_NAME,
-      async (_job) => {
-        const snap = DEMO_SARAH;
+      async (job) => {
+        const { sncId } = job.data as { sncId: string; athleteId: string };
+        // Bypass politeFetch — feed the captured fixture directly into the real parser.
+        const snap = parseAthletePage(html, { sncId });
         const { athleteId } = await reconcile(prisma, snap);
         await recomputePersonalBests(prisma, athleteId);
-        return { athleteId };
+        return { athleteId, swims: snap.swims.length };
       },
       { connection: redis, concurrency: 1 },
     );
@@ -65,28 +76,30 @@ describe.skip('pipeline integration', () => {
     );
   });
 
-  it('processes a stub job end-to-end: athlete + swims + PBs in DB', async () => {
+  it('processes a real fixture end-to-end: athlete + swims + PBs in DB', async () => {
     const job = await queue.add('scrape', {
       athleteId: 'pipeline-1',
-      sncId: 'DEMO-SARAH-001',
-      fixtureName: 'demo-sarah',
+      sncId: SNC_ID,
     });
-    const result = await job.waitUntilFinished(events, 20_000);
-    expect(result).toMatchObject({ athleteId: expect.any(String) });
+    const result = (await job.waitUntilFinished(events, 30_000)) as {
+      athleteId: string;
+      swims: number;
+    };
+    expect(result.athleteId).toEqual(expect.any(String));
+    expect(result.swims).toBeGreaterThan(0);
 
-    const athlete = await prisma.athlete.findUnique({
-      where: { sncId: 'DEMO-SARAH-001' },
-    });
+    const athlete = await prisma.athlete.findUnique({ where: { sncId: SNC_ID } });
     expect(athlete).not.toBeNull();
+    expect(athlete?.gender).toBe('M'); // derived from bio text
 
-    const swims = await prisma.swim.findMany({
-      where: { athleteId: athlete!.id },
-    });
-    expect(swims).toHaveLength(2);
+    const swims = await prisma.swim.findMany({ where: { athleteId: athlete!.id } });
+    expect(swims.length).toBeGreaterThan(0);
+    for (const s of swims) {
+      expect(s.dataSource).toBe('www.swimming.ca');
+      expect(s.timeCentiseconds).toBeGreaterThan(0);
+    }
 
-    const pbs = await prisma.personalBest.findMany({
-      where: { athleteId: athlete!.id },
-    });
-    expect(pbs).toHaveLength(2);
+    const pbs = await prisma.personalBest.findMany({ where: { athleteId: athlete!.id } });
+    expect(pbs.length).toBeGreaterThan(0);
   });
 });
