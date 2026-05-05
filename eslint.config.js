@@ -21,4 +21,11 @@ export default tseslint.config(
       '@typescript-eslint/consistent-type-imports': 'error',
     },
   },
+  {
+    // Mobile (Expo / React Native) uses CommonJS for build configs
+    files: ['apps/client/mobile/**/*.{js,cjs}'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
 );

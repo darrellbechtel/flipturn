@@ -1,0 +1,17 @@
+# Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+
+# Native build outputs (managed workflow generates these in dev)
+ios/
+android/
+
+# Build secrets / EAS
+.easignore
+secrets.json
+
+# Misc
+*.log
+node_modules/
