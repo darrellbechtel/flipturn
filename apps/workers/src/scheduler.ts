@@ -17,10 +17,13 @@ function getSchedulerQueue(): Queue {
 }
 
 /**
- * Enqueue a scrape job for every Athlete with sncId set.
+ * Enqueue a scrape job for every Athlete with sncId set, then hard-delete
+ * magic-link tokens whose expiry was more than 24h ago.
  * Called by the BullMQ repeatable job (every 24h).
  */
-export async function tickScheduler(prisma: PrismaClient): Promise<{ enqueued: number }> {
+export async function tickScheduler(
+  prisma: PrismaClient,
+): Promise<{ enqueued: number; cleaned: number }> {
   const log = getLogger();
   const athletes = await prisma.athlete.findMany({
     select: { id: true, sncId: true },
@@ -32,8 +35,20 @@ export async function tickScheduler(prisma: PrismaClient): Promise<{ enqueued: n
       { delay: Math.floor(Math.random() * 5 * 60 * 1000) },
     );
   }
-  log.info({ enqueued: athletes.length }, 'scheduler tick complete');
-  return { enqueued: athletes.length };
+
+  const cleaned = await cleanupExpiredMagicLinks(prisma);
+
+  log.info({ enqueued: athletes.length, cleaned }, 'scheduler tick complete');
+  return { enqueued: athletes.length, cleaned };
+}
+
+async function cleanupExpiredMagicLinks(prisma: PrismaClient): Promise<number> {
+  // Hard-delete tokens whose expiry was > 24h ago. (Per design spec §10.4.)
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const result = await prisma.magicLinkToken.deleteMany({
+    where: { expiresAt: { lt: cutoff } },
+  });
+  return result.count;
 }
 
 /**
