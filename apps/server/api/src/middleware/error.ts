@@ -1,6 +1,7 @@
 import type { Context, Next } from 'hono';
 import { ZodError } from 'zod';
 import { getLogger } from '../logger.js';
+import { Sentry } from '../sentry.js';
 
 export class ApiError extends Error {
   constructor(
@@ -20,6 +21,11 @@ export function errorHandler(err: Error, c: Context): Response {
   const log = getLogger();
   if (err instanceof ApiError) {
     log.warn({ err, status: err.status, code: err.code }, 'api error');
+    // 5xx ApiErrors are unexpected server failures dressed in our error type;
+    // capture them. 4xx are client-induced (bad input, auth) and not bugs.
+    if (err.status >= 500) {
+      Sentry.captureException(err);
+    }
     return c.json(
       { error: { code: err.code ?? 'api_error', message: err.message } },
       err.status as 400 | 401 | 403 | 404 | 409,
@@ -30,6 +36,7 @@ export function errorHandler(err: Error, c: Context): Response {
     return c.json({ error: { code: 'validation_error', issues: err.flatten() } }, 400);
   }
   log.error({ err }, 'unhandled error');
+  Sentry.captureException(err);
   return c.json({ error: { code: 'internal_error', message: 'Internal Server Error' } }, 500);
 }
 

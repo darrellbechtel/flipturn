@@ -8,6 +8,7 @@ import { parseAthletePage } from './parser/athletePage.js';
 import { reconcile } from './reconcile.js';
 import { recomputePersonalBests } from './personalBest.js';
 import { buildAthleteUrl } from './url.js';
+import { Sentry } from './sentry.js';
 
 export function startScrapeWorker(): Worker<ScrapeAthleteJob> {
   const log = getLogger();
@@ -52,6 +53,8 @@ export function startScrapeWorker(): Worker<ScrapeAthleteJob> {
       log.warn({ jobId: job?.id, retryAfterMs: err.retryAfterMs }, 'job will retry on backoff');
     } else {
       log.error({ jobId: job?.id, err }, 'job failed');
+      // Routine retry errors (FetchRetryError) are not bugs; everything else is.
+      Sentry.captureException(err);
     }
   });
 
@@ -72,6 +75,10 @@ export function startSchedulerWorker(): Worker {
     },
     { connection: getRedis(), concurrency: 1 },
   );
-  w.on('failed', (job, err) => log.error({ jobId: job?.id, err }, 'scheduler tick failed'));
+  w.on('failed', (job, err) => {
+    log.error({ jobId: job?.id, err }, 'scheduler tick failed');
+    // Scheduler shouldn't fail under normal operation — capture every failure.
+    Sentry.captureException(err);
+  });
   return w;
 }
