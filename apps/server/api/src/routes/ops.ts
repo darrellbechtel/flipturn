@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { AppDeps } from '../app.js';
 import { errorHandler } from '../middleware/error.js';
 import { sessionMiddleware } from '../middleware/session.js';
+import { getRedis } from '../redis.js';
 
 export function healthRoute(deps: AppDeps): Hono {
   const r = new Hono();
@@ -13,7 +14,22 @@ export function healthRoute(deps: AppDeps): Hono {
     } catch {
       dbStatus = 'fail';
     }
-    return c.json({ db: dbStatus, redis: 'ok' });
+
+    let redisStatus: 'ok' | 'fail' = 'ok';
+    try {
+      const redis = deps.redis ?? getRedis();
+      const reply = await Promise.race([
+        redis.ping(),
+        new Promise<string>((_, reject) => {
+          setTimeout(() => reject(new Error('timeout')), 1000).unref();
+        }),
+      ]);
+      if (reply !== 'PONG') redisStatus = 'fail';
+    } catch {
+      redisStatus = 'fail';
+    }
+
+    return c.json({ db: dbStatus, redis: redisStatus });
   });
   return r;
 }

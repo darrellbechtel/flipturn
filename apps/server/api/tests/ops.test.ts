@@ -12,11 +12,12 @@ describe('GET /v1/health', () => {
     await h.teardown();
   });
 
-  it('reports db ok', async () => {
+  it('reports db ok and redis ok', async () => {
     const res = await h.app.request('/v1/health');
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { db: 'ok' | 'fail' };
+    const body = (await res.json()) as { db: 'ok' | 'fail'; redis: 'ok' | 'fail' };
     expect(body.db).toBe('ok');
+    expect(body.redis).toBe('ok');
   });
 });
 
