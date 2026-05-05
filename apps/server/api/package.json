@@ -19,6 +19,7 @@
     "@hono/zod-validator": "^0.4.0",
     "@sentry/node": "^8.34.0",
     "hono": "^4.6.0",
+    "ioredis": "^5.4.1",
     "pino": "^9.5.0",
     "pino-pretty": "^11.3.0",
     "resend": "^4.0.0",
