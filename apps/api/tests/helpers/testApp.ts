@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process';
 import { PrismaClient } from '@flipturn/db';
-import { Hono } from 'hono';
+import type { Hono } from 'hono';
 import { InMemoryEmailSender } from '../../src/email.js';
 import { createApp, type AppDeps } from '../../src/app.js';
 

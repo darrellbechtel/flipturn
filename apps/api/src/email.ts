@@ -1,4 +1,4 @@
-import { Resend } from 'resend';
+import type { Resend } from 'resend';
 
 export interface OutgoingEmail {
   readonly to: string;
