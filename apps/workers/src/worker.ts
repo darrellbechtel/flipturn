@@ -68,7 +68,7 @@ export function startSchedulerWorker(): Worker {
     'flipturn-scheduler',
     async () => {
       const { tickScheduler } = await import('./scheduler.js');
-      await tickScheduler();
+      await tickScheduler(getPrisma());
     },
     { connection: getRedis(), concurrency: 1 },
   );

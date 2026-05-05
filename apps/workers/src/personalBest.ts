@@ -16,16 +16,19 @@ export async function recomputePersonalBests(
   const log = getLogger();
 
   return prisma.$transaction(async (tx) => {
-    // Find the fastest OFFICIAL swim per eventKey for this athlete.
+    // Find the fastest OFFICIAL swim per eventKey for this athlete. Pull the
+    // meet startDate alongside so we can populate PB.achievedAt without a
+    // second findMany.
     const swims = await tx.swim.findMany({
       where: { athleteId, status: 'OFFICIAL', isCurrent: true },
       orderBy: [{ eventKey: 'asc' }, { timeCentiseconds: 'asc' }],
+      include: { meet: { select: { startDate: true } } },
     });
 
     interface BestSwim {
       id: string;
       timeCentiseconds: number;
-      swamAt: Date;
+      achievedAt: Date;
     }
     const fastestByEventKey = new Map<string, BestSwim>();
     for (const swim of swims) {
@@ -33,20 +36,10 @@ export async function recomputePersonalBests(
         fastestByEventKey.set(swim.eventKey, {
           id: swim.id,
           timeCentiseconds: swim.timeCentiseconds,
-          swamAt: swim.scrapedAt, // best-effort proxy; refined below via meet startDate
+          achievedAt: swim.meet.startDate,
         });
       }
     }
-
-    // Look up each best swim's meet startDate to use as achievedAt.
-    const swimIds = [...fastestByEventKey.values()].map((s) => s.id);
-    const swimDetails = await tx.swim.findMany({
-      where: { id: { in: swimIds } },
-      include: { meet: { select: { startDate: true } } },
-    });
-    const swamAtById = new Map<string, Date>(
-      swimDetails.map((s) => [s.id, s.meet.startDate] as const),
-    );
 
     // Read existing PBs once so we can avoid no-op writes (which would still
     // bump `@updatedAt` and break idempotence).
@@ -55,13 +48,12 @@ export async function recomputePersonalBests(
 
     let created = 0;
     for (const [eventKey, best] of fastestByEventKey.entries()) {
-      const achievedAt = swamAtById.get(best.id) ?? best.swamAt;
       const existing = existingByEventKey.get(eventKey);
       if (
         existing &&
         existing.swimId === best.id &&
         existing.timeCentiseconds === best.timeCentiseconds &&
-        existing.achievedAt.getTime() === achievedAt.getTime()
+        existing.achievedAt.getTime() === best.achievedAt.getTime()
       ) {
         continue; // already up to date — skip to keep updatedAt stable
       }
@@ -70,14 +62,14 @@ export async function recomputePersonalBests(
         update: {
           swimId: best.id,
           timeCentiseconds: best.timeCentiseconds,
-          achievedAt,
+          achievedAt: best.achievedAt,
         },
         create: {
           athleteId,
           eventKey,
           swimId: best.id,
           timeCentiseconds: best.timeCentiseconds,
-          achievedAt,
+          achievedAt: best.achievedAt,
         },
       });
       created++;

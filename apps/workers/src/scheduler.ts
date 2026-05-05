@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq';
-import { getPrisma } from '@flipturn/db';
+import type { PrismaClient } from '@flipturn/db';
 import { enqueueScrapeAthlete } from './queue.js';
 import { getRedis } from './redis.js';
 import { getLogger } from './logger.js';
@@ -20,8 +20,7 @@ function getSchedulerQueue(): Queue {
  * Enqueue a scrape job for every Athlete with sncId set.
  * Called by the BullMQ repeatable job (every 24h).
  */
-export async function tickScheduler(): Promise<{ enqueued: number }> {
-  const prisma = getPrisma();
+export async function tickScheduler(prisma: PrismaClient): Promise<{ enqueued: number }> {
   const log = getLogger();
   const athletes = await prisma.athlete.findMany({
     select: { id: true, sncId: true },
