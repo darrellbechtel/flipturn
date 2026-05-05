@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Plan series:** This is plan 3 of 6 derived from [`docs/superpowers/specs/2026-05-04-flipturn-mvp-design.md`](../specs/2026-05-04-flipturn-mvp-design.md).
+**Plan series:** This is plan 3 of 6 derived from [`docs/superpowers/specs/2026-05-04-01-flipturn-mvp-design.md`](../specs/2026-05-04-01-flipturn-mvp-design.md).
 
 - ✅ Plan 1 — Foundation (monorepo + db + shared) — landed
 - ✅ Plan 2 — Spike + Worker infrastructure with stub parser — landed

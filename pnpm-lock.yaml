@@ -24,14 +24,14 @@ importers:
         specifier: ^8.8.0
         version: 8.59.2(eslint@9.39.4)(typescript@5.9.3)
 
-  apps/workers:
+  apps/server/workers:
     dependencies:
       '@flipturn/db':
         specifier: workspace:*
-        version: link:../../packages/db
+        version: link:../../../packages/db
       '@flipturn/shared':
         specifier: workspace:*
-        version: link:../../packages/shared
+        version: link:../../../packages/shared
       '@sentry/node':
         specifier: ^8.34.0
         version: 8.55.2

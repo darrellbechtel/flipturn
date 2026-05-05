@@ -3,7 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-05-04
 **Deciders:** Darrell Bechtel
-**Spec link:** [`docs/superpowers/specs/2026-05-04-flipturn-mvp-design.md`](../superpowers/specs/2026-05-04-flipturn-mvp-design.md)
+**Spec link:** [`docs/superpowers/specs/2026-05-04-01-flipturn-mvp-design.md`](../superpowers/specs/2026-05-04-01-flipturn-mvp-design.md)
 **Builds on:** [ADR 0002 — SNC data source](./0002-snc-data-source.md)
 
 ## Context
@@ -19,7 +19,7 @@ to land three architectural details that ADR 0002 deferred:
 
 ### 1. URL-classification dispatch
 
-`apps/workers/src/url.ts` exposes `classifyUrl(fullUrl) → 'athlete' | 'meet' | 'unknown'`
+`apps/server/workers/src/url.ts` exposes `classifyUrl(fullUrl) → 'athlete' | 'meet' | 'unknown'`
 based on host + path prefix:
 
 - `www.swimming.ca/swimmer/*` → athlete

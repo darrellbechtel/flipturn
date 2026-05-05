@@ -20,7 +20,7 @@ pnpm --filter @flipturn/workers dev
 
 ## Architecture
 
-See [`docs/superpowers/specs/2026-05-04-flipturn-mvp-design.md`](../../docs/superpowers/specs/2026-05-04-flipturn-mvp-design.md) §6 for the full worker design.
+See [`docs/superpowers/specs/2026-05-04-01-flipturn-mvp-design.md`](../../../docs/superpowers/specs/2026-05-04-01-flipturn-mvp-design.md) §6 for the full worker design.
 
 The pipeline is structured fetch-shape-agnostic so the spike's outcome (HTML vs.
 JSON vs. Playwright) only affects the parser layer.
@@ -64,6 +64,6 @@ await enqueueScrapeAthlete({
 });
 ```
 
-See [`docs/adr/0002-snc-data-source.md`](../../docs/adr/0002-snc-data-source.md)
-and [`docs/adr/0003-parser-architecture.md`](../../docs/adr/0003-parser-architecture.md)
+See [`docs/adr/0002-snc-data-source.md`](../../../docs/adr/0002-snc-data-source.md)
+and [`docs/adr/0003-parser-architecture.md`](../../../docs/adr/0003-parser-architecture.md)
 for the design decisions.

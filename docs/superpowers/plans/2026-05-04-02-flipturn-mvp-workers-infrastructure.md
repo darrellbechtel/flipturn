@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Plan series:** This is plan 2 of 6 derived from [`docs/superpowers/specs/2026-05-04-flipturn-mvp-design.md`](../specs/2026-05-04-flipturn-mvp-design.md). Updated split (was 5 plans; the spike's parser-shape uncertainty made splitting workers worthwhile):
+**Plan series:** This is plan 2 of 6 derived from [`docs/superpowers/specs/2026-05-04-01-flipturn-mvp-design.md`](../specs/2026-05-04-01-flipturn-mvp-design.md). Updated split (was 5 plans; the spike's parser-shape uncertainty made splitting workers worthwhile):
 
 - ✅ Plan 1 — Foundation (monorepo + db + shared) — landed
 - **Plan 2 — Spike + Worker infrastructure (this plan)**
@@ -174,7 +174,7 @@ pnpm --filter @flipturn/workers dev
 
 ## Architecture
 
-See [`docs/superpowers/specs/2026-05-04-flipturn-mvp-design.md`](../../docs/superpowers/specs/2026-05-04-flipturn-mvp-design.md) §6 for the full worker design.
+See [`docs/superpowers/specs/2026-05-04-01-flipturn-mvp-design.md`](../../docs/superpowers/specs/2026-05-04-01-flipturn-mvp-design.md) §6 for the full worker design.
 
 The pipeline is structured fetch-shape-agnostic so the spike's outcome (HTML vs.
 JSON vs. Playwright) only affects the parser layer.

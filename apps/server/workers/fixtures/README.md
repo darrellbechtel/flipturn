@@ -1,7 +1,7 @@
 # Fixtures
 
 Captured samples from Swimming Canada (`www.swimming.ca` and `results.swimming.ca`)
-for testing the parser (Plan 3). See [`docs/adr/0002-snc-data-source.md`](../../../docs/adr/0002-snc-data-source.md)
+for testing the parser (Plan 3). See [`docs/adr/0002-snc-data-source.md`](../../../../docs/adr/0002-snc-data-source.md)
 for the full spike findings.
 
 | File                             | Source URL                                                      | Captured   | Notes                                                                                           |
@@ -16,7 +16,7 @@ for the full spike findings.
 Re-capture only when the source's HTML structure changes (low frequency — both
 WordPress and SPLASH templates are relatively stable). When re-capturing, use
 the `FlipTurnBot/0.1` user agent and respect the politeness defaults in
-[`docs/adr/0002-snc-data-source.md`](../../../docs/adr/0002-snc-data-source.md).
+[`docs/adr/0002-snc-data-source.md`](../../../../docs/adr/0002-snc-data-source.md).
 
 **Do NOT capture beta-user data here.** Fixtures must be public, non-sensitive,
 and ideally feature retired Olympians (long career, low risk of takedown).

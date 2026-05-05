@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Plan series:** This is plan 1 of 5 derived from [`docs/superpowers/specs/2026-05-04-flipturn-mvp-design.md`](../specs/2026-05-04-flipturn-mvp-design.md). Subsequent plans:
+**Plan series:** This is plan 1 of 5 derived from [`docs/superpowers/specs/2026-05-04-01-flipturn-mvp-design.md`](../specs/2026-05-04-01-flipturn-mvp-design.md). Subsequent plans:
 
 - Plan 2 — Spike + Workers (Tier-4 scrape pipeline end-to-end)
 - Plan 3 — API (Hono + magic-link auth + endpoints)
