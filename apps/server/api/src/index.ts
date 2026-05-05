@@ -5,6 +5,7 @@ import { getLogger } from './logger.js';
 import { initSentry } from './sentry.js';
 import { createApp } from './app.js';
 import { ResendEmailSender, InMemoryEmailSender, type EmailSender } from './email.js';
+import { disconnectRedis } from './redis.js';
 import { getPrisma } from '@flipturn/db';
 import { enqueueScrapeAthlete } from '@flipturn/workers/queue';
 
@@ -41,8 +42,31 @@ async function main() {
 
   const shutdown = async (signal: string) => {
     log.info({ signal }, 'shutting down');
-    server.close();
-    await prisma.$disconnect();
+
+    // Hard timeout so a stuck socket doesn't hang shutdown forever.
+    const hardTimeout = setTimeout(() => {
+      log.warn('shutdown hard timeout (10s) reached — forcing exit');
+      process.exit(1);
+    }, 10_000);
+    hardTimeout.unref();
+
+    // Stop accepting new connections and wait for in-flight requests to finish.
+    await new Promise<void>((resolve) => {
+      // Close idle keep-alive sockets so server.close() can resolve promptly.
+      const maybeCloseIdle = (server as { closeIdleConnections?: () => void }).closeIdleConnections;
+      if (typeof maybeCloseIdle === 'function') {
+        maybeCloseIdle.call(server);
+      }
+      server.close((err) => {
+        if (err) log.warn({ err }, 'server.close error');
+        resolve();
+      });
+    });
+
+    // Disconnect external resources after the HTTP server has drained.
+    await Promise.allSettled([prisma.$disconnect(), disconnectRedis()]);
+
+    clearTimeout(hardTimeout);
     process.exit(0);
   };
   process.on('SIGINT', () => void shutdown('SIGINT'));
