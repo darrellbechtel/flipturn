@@ -48,7 +48,20 @@ export default function Onboarding() {
   }, [pollingForId, qc]);
 
   if (pollingForId) {
-    return <Loading message="Fetching swim history…" />;
+    return (
+      <Screen>
+        <Loading message="Fetching swim history…" />
+        <Button
+          label="Cancel"
+          variant="secondary"
+          onPress={() => {
+            setPollingForId(null);
+            router.back();
+          }}
+          style={{ marginTop: spacing.lg }}
+        />
+      </Screen>
+    );
   }
 
   return (
@@ -82,6 +95,15 @@ export default function Onboarding() {
               },
             },
           );
+        }}
+        style={{ marginTop: spacing.md }}
+      />
+      <Button
+        label="Cancel"
+        variant="secondary"
+        onPress={() => {
+          setPollingForId(null);
+          router.back();
         }}
         style={{ marginTop: spacing.md }}
       />
