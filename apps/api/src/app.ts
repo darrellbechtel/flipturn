@@ -5,6 +5,7 @@ import { errorHandler } from './middleware/error.js';
 import { authRoutes } from './routes/auth.js';
 import { athletesRoutes, userAthletesRoutes } from './routes/athletes.js';
 import { dataRoutes } from './routes/data.js';
+import { healthRoute, meRoutes } from './routes/ops.js';
 
 export interface AppDeps {
   readonly prisma: PrismaClient;
@@ -22,8 +23,8 @@ export function createApp(deps: AppDeps): Hono {
   app.route('/v1/athletes', athletesRoutes(deps));
   app.route('/v1/athletes', dataRoutes(deps));
   app.route('/v1/user-athletes', userAthletesRoutes(deps));
-
-  app.get('/v1/health', (c) => c.json({ ok: true }));
+  app.route('/v1/health', healthRoute(deps));
+  app.route('/v1/me', meRoutes(deps));
 
   return app;
 }

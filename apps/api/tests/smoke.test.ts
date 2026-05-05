@@ -15,7 +15,7 @@ describe('test harness smoke', () => {
   it('boots the app and responds to /v1/health', async () => {
     const res = await h.app.request('/v1/health');
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { ok: boolean };
-    expect(body.ok).toBe(true);
+    const body = (await res.json()) as { db: string };
+    expect(body.db).toBe('ok');
   });
 });
