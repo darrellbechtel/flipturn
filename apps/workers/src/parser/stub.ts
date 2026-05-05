@@ -11,6 +11,7 @@ const DEMO_SARAH: AthleteSnapshot = {
   primaryName: 'Sarah Demo',
   gender: 'F',
   homeClub: 'Waterloo Region Aquatics',
+  dataSource: 'stub',
   swims: [
     {
       meetExternalId: 'DEMO-MEET-001',
@@ -54,6 +55,7 @@ const DEMO_BENJI: AthleteSnapshot = {
   primaryName: 'Benji Demo',
   gender: 'M',
   homeClub: 'Waterloo Region Aquatics',
+  dataSource: 'stub',
   swims: [
     {
       meetExternalId: 'DEMO-MEET-001',
@@ -94,6 +96,7 @@ export function parseStub(input: StubParseInput): AthleteSnapshot {
     primaryName: 'Unknown',
     gender: null,
     homeClub: null,
+    dataSource: 'stub',
     swims: [],
   };
 }
