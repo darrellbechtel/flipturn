@@ -145,6 +145,8 @@ Authoritative file lives at `packages/db/prisma/schema.prisma`. The full file is
 
 ## 6. Scraper / worker design
 
+> **Spike outcome (post-Plan 2):** See [ADR 0002 — SNC data source](../../adr/0002-snc-data-source.md) for the full investigation, the cheerio-on-static-HTML decision, and observed Cloudflare WAF behavior. Two source hosts in scope: `www.swimming.ca/swimmer/<id>/` (athlete pages) and `results.swimming.ca/<meet_slug>/` (SPLASH meet index). Cloudflare 429s observed at ~3 req/s — the 1 req/5s default in §6.3 has 12× headroom.
+
 ### 6.1 The spike (first thing built)
 
 Before any worker code, a small investigation:
