@@ -256,6 +256,7 @@ Open a browser (or use `curl`) and explore:
 - Sample meet results page
 
 Document:
+
 - Base URL structure (athletes vs meets vs events)
 - Whether pages are server-rendered HTML, JSON-via-API, or SPA (look at `view-source` and Network tab)
 - Whether there's a `robots.txt` (`https://<host>/robots.txt`) and what it says
@@ -324,12 +325,12 @@ For the meet fixture, write `apps/workers/fixtures/snc-meet-sample.expected.json
 
 Captured samples from `results.swimming.ca` for testing the parser (Plan 3).
 
-| File | Source URL | Captured | Notes |
-|------|-----------|----------|-------|
-| snc-athlete-sample.html | <full URL> | YYYY-MM-DD | Public retired athlete |
-| snc-athlete-sample.expected.json | (hand-extracted) | — | Golden parser output |
-| snc-meet-sample.html | <full URL> | YYYY-MM-DD | |
-| snc-meet-sample.expected.json | (hand-extracted) | — | |
+| File                             | Source URL       | Captured   | Notes                  |
+| -------------------------------- | ---------------- | ---------- | ---------------------- |
+| snc-athlete-sample.html          | <full URL>       | YYYY-MM-DD | Public retired athlete |
+| snc-athlete-sample.expected.json | (hand-extracted) | —          | Golden parser output   |
+| snc-meet-sample.html             | <full URL>       | YYYY-MM-DD |                        |
+| snc-meet-sample.expected.json    | (hand-extracted) | —          |                        |
 
 Re-capture only when the source's HTML structure changes (low frequency).
 Do NOT capture beta-user data here — fixtures must be public/non-sensitive.
@@ -371,10 +372,12 @@ vs Playwright for JS-rendered SPAs) and constrains the rest of the worker design
 **Fetch approach:** <cheerio-on-static-HTML | undici JSON fetch | Playwright headless>
 
 **Reasons:**
+
 - <e.g. "responses are fully server-rendered HTML; no JS execution needed">
 - <e.g. "low complexity; cheerio is the smallest viable dependency">
 
 **Politeness defaults (per design spec §6.3):**
+
 - User-Agent: `FlipTurnBot/0.1 (+https://flipturn.app/bot; contact@flipturn.app)`
 - Rate limit: 1 req / 5s per host
 - Daily per-host budget: 500 req/day
@@ -1040,10 +1043,7 @@ function parseRobots(text: string): RobotsRules {
   return { disallow };
 }
 
-export async function isAllowedByRobots(
-  redis: Redis,
-  fullUrl: string,
-): Promise<boolean> {
+export async function isAllowedByRobots(redis: Redis, fullUrl: string): Promise<boolean> {
   const url = new URL(fullUrl);
   const cacheKey = robotsKey(url.host);
   const cached = await redis.get(cacheKey);
@@ -1232,7 +1232,9 @@ const SAFE_SEGMENT = /^[A-Za-z0-9._-]+$/;
 
 function assertSafeSegment(name: string, label: string): void {
   if (!SAFE_SEGMENT.test(name)) {
-    throw new Error(`archive: ${label} must match ${SAFE_SEGMENT.source}, got ${JSON.stringify(name)}`);
+    throw new Error(
+      `archive: ${label} must match ${SAFE_SEGMENT.source}, got ${JSON.stringify(name)}`,
+    );
   }
 }
 
@@ -1305,11 +1307,7 @@ import { request } from 'undici';
 import { getEnv } from './env.js';
 import { getLogger } from './logger.js';
 import { getRedis } from './redis.js';
-import {
-  acquireToken,
-  isAllowedByRobots,
-  getUserAgent,
-} from './politeness.js';
+import { acquireToken, isAllowedByRobots, getUserAgent } from './politeness.js';
 import { archiveResponse } from './archive.js';
 
 export interface FetchRequest {
@@ -1371,10 +1369,7 @@ export async function politeFetch(req: FetchRequest): Promise<FetchResult> {
     contentType,
   });
 
-  log.info(
-    { url: req.url, statusCode, archivedAt, bytes: text.length },
-    'fetched and archived',
-  );
+  log.info({ url: req.url, statusCode, archivedAt, bytes: text.length }, 'fetched and archived');
 
   return { statusCode, body: text, contentType, archivedAt, fetchedAt };
 }
@@ -1468,9 +1463,7 @@ describe('parseStub', () => {
   });
 
   it('throws on unknown fixture', () => {
-    expect(() =>
-      parseStub({ fixtureName: 'no-such-fixture', sncId: 'x', body: '' }),
-    ).toThrow();
+    expect(() => parseStub({ fixtureName: 'no-such-fixture', sncId: 'x', body: '' })).toThrow();
   });
 
   it('uses the sncId override if fixtureName not provided', () => {
@@ -1845,10 +1838,7 @@ export async function reconcile(
       swimsTouched++;
     }
 
-    log.info(
-      { athleteId: athlete.id, sncId: snapshot.sncId, swimsTouched },
-      'reconcile complete',
-    );
+    log.info({ athleteId: athlete.id, sncId: snapshot.sncId, swimsTouched }, 'reconcile complete');
 
     return { athleteId: athlete.id, swimsTouched };
   });
@@ -2049,9 +2039,7 @@ export async function recomputePersonalBests(
       where: { id: { in: swimIds } },
       include: { meet: { select: { startDate: true } } },
     });
-    const swamAtById = new Map(
-      swimDetails.map((s) => [s.id, s.meet.startDate]),
-    );
+    const swamAtById = new Map(swimDetails.map((s) => [s.id, s.meet.startDate]));
 
     let created = 0;
     for (const [eventKey, best] of fastestByEventKey.entries()) {
@@ -2589,15 +2577,14 @@ git commit -m "test(workers): end-to-end pipeline integration with stub parser"
 Read the current README. Append a new section after the existing Bootstrap block:
 
 ```markdown
-
 ## Workers
 
 Run the BullMQ scrape worker locally (after `pnpm dev:up` brings up Postgres + Redis):
 
 \`\`\`bash
-pnpm workers:dev      # tsx --watch (auto-reloads on src changes)
-pnpm workers:start    # one-shot run
-pnpm workers:test     # run worker tests
+pnpm workers:dev # tsx --watch (auto-reloads on src changes)
+pnpm workers:start # one-shot run
+pnpm workers:test # run worker tests
 \`\`\`
 
 Plan 2 ships a **stub parser** that returns hardcoded snapshots for `fixtureName="demo-sarah"` and `fixtureName="demo-benji"`. Plan 3 will replace it with the real `results.swimming.ca` parser based on ADR 0002.
@@ -2610,7 +2597,6 @@ Plan 2 ships a **stub parser** that returns hardcoded snapshots for `fixtureName
 Append a "Current state" section at the bottom:
 
 ```markdown
-
 ## Current state (Plan 2)
 
 This package ships the worker plumbing only:
@@ -2630,9 +2616,9 @@ To enqueue a job manually for local testing:
 \`\`\`ts
 import { enqueueScrapeAthlete } from './src/queue.js';
 await enqueueScrapeAthlete({
-  athleteId: '<some athlete id>',
-  sncId: 'DEMO-SARAH-001',
-  fixtureName: 'demo-sarah',
+athleteId: '<some athlete id>',
+sncId: 'DEMO-SARAH-001',
+fixtureName: 'demo-sarah',
 });
 \`\`\`
 ```
@@ -2649,6 +2635,7 @@ pnpm format:check
 ```
 
 All four should exit 0. The full test suite at this point includes:
+
 - `@flipturn/db`: 2 tests (migration smoke)
 - `@flipturn/shared`: 29 tests (time, eventKey, schemas)
 - `@flipturn/workers`: politeness (5+) + archive (4) + stub (4) + reconcile (5) + personalBest (4) + pipeline (1) = ~23 tests
