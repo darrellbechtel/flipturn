@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type MiddlewareHandler } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { MagicLinkRequestSchema, MagicLinkConsumeSchema } from '@flipturn/shared';
 import type { AppDeps } from '../app.js';
@@ -11,35 +11,61 @@ import {
   MAGIC_LINK_TTL_MS,
 } from '../auth.js';
 import { sessionMiddleware } from '../middleware/session.js';
+import { rateLimit } from '../middleware/rateLimit.js';
+
+// No-op middleware: used when deps.redis is undefined (test harnesses) so the
+// route shape stays identical and rate-limit logic is the only thing skipped.
+const passThrough: MiddlewareHandler = async (_c, next) => {
+  await next();
+};
 
 export function authRoutes(deps: AppDeps): Hono {
   const r = new Hono();
   r.onError(errorHandler);
 
-  r.post('/magic-link/request', zValidator('json', MagicLinkRequestSchema), async (c) => {
-    const { email } = c.req.valid('json');
-    const user = await deps.prisma.user.upsert({
-      where: { email },
-      update: {},
-      create: { email },
-    });
-    const tokenPlain = generateMagicLinkToken();
-    await deps.prisma.magicLinkToken.create({
-      data: {
-        userId: user.id,
-        tokenHash: hashToken(tokenPlain),
-        expiresAt: new Date(Date.now() + MAGIC_LINK_TTL_MS),
-      },
-    });
-    const link = buildMagicLinkUrl(deps.mobileDeepLinkBase, tokenPlain);
-    await deps.email.send({
-      to: email,
-      subject: 'Sign in to Flip Turn',
-      htmlBody: renderHtmlEmail(link),
-      textBody: renderTextEmail(link),
-    });
-    return c.body(null, 202);
-  });
+  // Rate limit: 5 magic-link requests per IP per hour.
+  // Closed beta has ~10-20 users; this is generous enough for legitimate users
+  // and tight enough to slow down email-bomb / token-spam attempts. We apply
+  // the limit BEFORE zValidator so malformed-JSON spam still counts toward
+  // the bucket (prevents validation-error amplification attacks).
+  const magicLinkRequestLimiter: MiddlewareHandler = deps.redis
+    ? rateLimit(deps.redis, {
+        bucket: 'magic-link-request',
+        windowSec: 3600,
+        limit: 5,
+        ...(deps.rateLimitIdentify ? { identify: deps.rateLimitIdentify } : {}),
+      })
+    : passThrough;
+
+  r.post(
+    '/magic-link/request',
+    magicLinkRequestLimiter,
+    zValidator('json', MagicLinkRequestSchema),
+    async (c) => {
+      const { email } = c.req.valid('json');
+      const user = await deps.prisma.user.upsert({
+        where: { email },
+        update: {},
+        create: { email },
+      });
+      const tokenPlain = generateMagicLinkToken();
+      await deps.prisma.magicLinkToken.create({
+        data: {
+          userId: user.id,
+          tokenHash: hashToken(tokenPlain),
+          expiresAt: new Date(Date.now() + MAGIC_LINK_TTL_MS),
+        },
+      });
+      const link = buildMagicLinkUrl(deps.mobileDeepLinkBase, tokenPlain);
+      await deps.email.send({
+        to: email,
+        subject: 'Sign in to Flip Turn',
+        htmlBody: renderHtmlEmail(link),
+        textBody: renderTextEmail(link),
+      });
+      return c.body(null, 202);
+    },
+  );
 
   r.post('/magic-link/consume', zValidator('json', MagicLinkConsumeSchema), async (c) => {
     const { token } = c.req.valid('json');
