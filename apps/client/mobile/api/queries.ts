@@ -18,7 +18,7 @@ function tokenOrThrow(token: string | null | undefined): string {
 export function useMe() {
   const { session } = useAuth();
   return useQuery({
-    queryKey: ['me', session?.token],
+    queryKey: ['me'],
     queryFn: () => getMe(tokenOrThrow(session?.token)),
     enabled: !!session?.token,
   });
@@ -27,7 +27,7 @@ export function useMe() {
 export function useAthletes() {
   const { session } = useAuth();
   return useQuery({
-    queryKey: ['athletes', session?.token],
+    queryKey: ['athletes'],
     queryFn: () => listAthletes(tokenOrThrow(session?.token)),
     enabled: !!session?.token,
   });
@@ -63,7 +63,7 @@ export function useUnlinkAthlete() {
 export function useSwims(athleteId: string | undefined, eventKey?: string) {
   const { session } = useAuth();
   return useQuery({
-    queryKey: ['swims', athleteId, eventKey, session?.token],
+    queryKey: ['swims', athleteId, eventKey],
     queryFn: () => getSwims(tokenOrThrow(session?.token), athleteId!, eventKey ? { eventKey } : {}),
     enabled: !!session?.token && !!athleteId,
   });
@@ -72,7 +72,7 @@ export function useSwims(athleteId: string | undefined, eventKey?: string) {
 export function usePersonalBests(athleteId: string | undefined) {
   const { session } = useAuth();
   return useQuery({
-    queryKey: ['personal-bests', athleteId, session?.token],
+    queryKey: ['personal-bests', athleteId],
     queryFn: () => getPersonalBests(tokenOrThrow(session?.token), athleteId!),
     enabled: !!session?.token && !!athleteId,
   });
@@ -81,7 +81,7 @@ export function usePersonalBests(athleteId: string | undefined) {
 export function useProgression(athleteId: string | undefined, eventKey: string | undefined) {
   const { session } = useAuth();
   return useQuery({
-    queryKey: ['progression', athleteId, eventKey, session?.token],
+    queryKey: ['progression', athleteId, eventKey],
     queryFn: () => getProgression(tokenOrThrow(session?.token), athleteId!, eventKey!),
     enabled: !!session?.token && !!athleteId && !!eventKey,
   });

@@ -20,7 +20,8 @@ export default function Home() {
 
   // Default selection: first athlete with at least one scrape.
   const list = athletes.data?.athletes ?? [];
-  const activeId = selectedId ?? list[0]?.id ?? null;
+  const activeId =
+    (selectedId && list.some((a) => a.id === selectedId) ? selectedId : list[0]?.id) ?? null;
   const active = list.find((a) => a.id === activeId);
 
   const pbs = usePersonalBests(activeId ?? undefined);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -8,37 +8,44 @@ import { TextField } from '../../components/TextField.js';
 import { ErrorMessage } from '../../components/ErrorMessage.js';
 import { Loading } from '../../components/Loading.js';
 import { colors, spacing, typography } from '../../theme/index.js';
-import { useAthletes, useOnboardAthlete } from '../../api/queries.js';
+import { useOnboardAthlete } from '../../api/queries.js';
 
 export default function Onboarding() {
   const [sncId, setSncId] = useState('');
   const onboard = useOnboardAthlete();
-  const athletes = useAthletes();
   const qc = useQueryClient();
   const [pollingForId, setPollingForId] = useState<string | null>(null);
+  const startRef = useRef<number | null>(null);
 
   // Once a new athlete is onboarded, poll the athletes list every 5s
   // until that athlete's lastScrapedAt becomes non-null OR 60s elapse.
   useEffect(() => {
-    if (!pollingForId) return;
-    const start = Date.now();
+    if (!pollingForId) {
+      startRef.current = null;
+      return;
+    }
+    startRef.current = Date.now();
     const interval = setInterval(() => {
       void qc.invalidateQueries({ queryKey: ['athletes'] });
-      const found = athletes.data?.athletes.find((a) => a.id === pollingForId);
+      // Read fresh data from the cache (set by invalidate's refetch).
+      const fresh = qc.getQueryData<{
+        athletes: Array<{ id: string; lastScrapedAt: string | null }>;
+      }>(['athletes']);
+      const found = fresh?.athletes.find((a) => a.id === pollingForId);
       if (found?.lastScrapedAt) {
         clearInterval(interval);
         setPollingForId(null);
         router.replace('/(app)/home');
         return;
       }
-      if (Date.now() - start > 60_000) {
+      if (startRef.current !== null && Date.now() - startRef.current > 60_000) {
         clearInterval(interval);
         setPollingForId(null);
         router.replace('/(app)/home'); // home will show "Loading…" status
       }
     }, 5_000);
     return () => clearInterval(interval);
-  }, [pollingForId, athletes.data, qc]);
+  }, [pollingForId, qc]);
 
   if (pollingForId) {
     return <Loading message="Fetching swim history…" />;
