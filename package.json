@@ -20,7 +20,10 @@
     "db:reset": "pnpm --filter @flipturn/db reset",
     "dev:up": "docker compose -f compose.dev.yaml up -d",
     "dev:down": "docker compose -f compose.dev.yaml down",
-    "dev:logs": "docker compose -f compose.dev.yaml logs -f"
+    "dev:logs": "docker compose -f compose.dev.yaml logs -f",
+    "workers:dev": "pnpm --filter @flipturn/workers dev",
+    "workers:start": "pnpm --filter @flipturn/workers start",
+    "workers:test": "pnpm --filter @flipturn/workers test"
   },
   "devDependencies": {
     "@types/node": "^22.7.0",
