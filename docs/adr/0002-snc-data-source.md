@@ -3,7 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-05-04
 **Deciders:** Darrell Bechtel
-**Spec link:** [`docs/superpowers/specs/2026-05-04-flipturn-mvp-design.md`](../superpowers/specs/2026-05-04-flipturn-mvp-design.md)
+**Spec link:** [`docs/superpowers/specs/2026-05-04-01-flipturn-mvp-design.md`](../superpowers/specs/2026-05-04-01-flipturn-mvp-design.md)
 
 ## Context
 
