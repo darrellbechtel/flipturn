@@ -20,7 +20,7 @@ export default function MagicLinkLanding() {
     },
     onSuccess: async (data) => {
       await signIn({ token: data.sessionToken, userEmail: data.email });
-      router.replace('/(app)/home' as never);
+      router.replace('/(app)/home');
     },
   });
 
@@ -38,7 +38,7 @@ export default function MagicLinkLanding() {
         <Button
           label="Back to sign in"
           variant="secondary"
-          onPress={() => router.replace('/(auth)/email-entry' as never)}
+          onPress={() => router.replace('/(auth)/email-entry')}
         />
       </Screen>
     );
@@ -56,7 +56,7 @@ export default function MagicLinkLanding() {
         <Button
           label="Back to sign in"
           variant="secondary"
-          onPress={() => router.replace('/(auth)/email-entry' as never)}
+          onPress={() => router.replace('/(auth)/email-entry')}
         />
       </Screen>
     );
