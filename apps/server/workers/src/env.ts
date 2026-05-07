@@ -15,7 +15,7 @@ const EnvSchema = z.object({
   // Politeness defaults — overridable for testing.
   SCRAPE_USER_AGENT: z
     .string()
-    .default('FlipTurnBot/0.1 (+https://flipturn.app/bot; contact@flipturn.app)'),
+    .default('FlipTurnBot/0.1 (+https://flipturn.ca/bot; contact@flipturn.ca)'),
   SCRAPE_RATE_LIMIT_MS: z.coerce.number().int().positive().default(5000),
   SCRAPE_DAILY_HOST_BUDGET: z.coerce.number().int().positive().default(500),
   // Path under repo root for raw artifact archive.

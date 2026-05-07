@@ -10,10 +10,10 @@
 #      ~/.cloudflared/<TUNNEL_UUID>.json — leave it there and reference it
 #      via `credentials-file` below.
 #   5. Add a CNAME record in the Cloudflare DNS panel:
-#         api.flipturn.app  ->  <TUNNEL_UUID>.cfargotunnel.com
-#      (or: cloudflared tunnel route dns flipturn-prod api.flipturn.app)
+#         api.flipturn.ca  ->  <TUNNEL_UUID>.cfargotunnel.com
+#      (or: cloudflared tunnel route dns flipturn-prod api.flipturn.ca)
 #   6. Test: cloudflared tunnel run flipturn-prod
-#      Then curl https://api.flipturn.app/v1/health  ->  {"db":"ok","redis":"ok"}
+#      Then curl https://api.flipturn.ca/v1/health  ->  {"db":"ok","redis":"ok"}
 #   7. Wire into pm2: see infra/pm2/ecosystem.config.cjs
 
 # Replace <TUNNEL_UUID> with the tunnel's UUID printed by `tunnel create`.
@@ -21,7 +21,7 @@ tunnel: <TUNNEL_UUID>
 credentials-file: /Users/darrell/.cloudflared/<TUNNEL_UUID>.json
 
 ingress:
-  - hostname: api.flipturn.app
+  - hostname: api.flipturn.ca
     service: http://localhost:3000
 
   # Catch-all (required by cloudflared)

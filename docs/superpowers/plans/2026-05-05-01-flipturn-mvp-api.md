@@ -226,7 +226,7 @@ const EnvSchema = z.object({
     .string()
     .transform((v) => (v === '' ? undefined : v))
     .pipe(z.string().min(1).optional()),
-  EMAIL_FROM: z.string().default('Flip Turn <noreply@flipturn.app>'),
+  EMAIL_FROM: z.string().default('Flip Turn <noreply@flipturn.ca>'),
   // App-specific
   MOBILE_DEEP_LINK_BASE: z.string().default('flipturn://auth'),
 });
@@ -307,7 +307,7 @@ Append a new section to `.env.example`:
 PORT=3000
 BASE_URL="http://localhost:3000"
 RESEND_API_KEY=                      # leave blank in dev to use the InMemory fake
-EMAIL_FROM="Flip Turn <noreply@flipturn.app>"
+EMAIL_FROM="Flip Turn <noreply@flipturn.ca>"
 MOBILE_DEEP_LINK_BASE="flipturn://auth"
 ```
 
@@ -2543,7 +2543,7 @@ to protect secret data. Spec §9 chose magic-link email + long-lived sessions.
 ### 3. Email delivery
 
 - Production: Resend (chosen for free tier + good DX). `EMAIL_FROM` is a
-  configured envelope. The `noreply@flipturn.app` placeholder will be
+  configured envelope. The `noreply@flipturn.ca` placeholder will be
   replaced with the verified domain in Plan 6.
 - Tests / dev without `RESEND_API_KEY`: `InMemoryEmailSender` captures
   messages on a per-process outbox so tests can extract magic-link tokens
@@ -2586,7 +2586,7 @@ to protect secret data. Spec §9 chose magic-link email + long-lived sessions.
   Plan 6 should monitor and have a Postmark / SES fallback.
 - Email delivery is the auth primitive. If Gmail/Apple flag the sending
   domain, the entire system is unusable. Plan 6 should set up SPF/DKIM/DMARC
-  on `flipturn.app` before launch.
+  on `flipturn.ca` before launch.
 ```
 
 ### Step 12.2: Update `apps/api/README.md`
@@ -2693,7 +2693,7 @@ When all checked, hand off to Plan 5 — the Expo mobile app.
 
 ## Open items deferred again
 
-- Live Resend send (covered when Plan 6 wires up the Mac Mini's `flipturn.app` DNS + SPF/DKIM)
+- Live Resend send (covered when Plan 6 wires up the Mac Mini's `flipturn.ca` DNS + SPF/DKIM)
 - API rate limiting (Plan 6)
 - Cloudflare Tunnel exposure (Plan 6)
 - Plan 3 worker robustness items: MIN_BACKOFF tuning, daily-budget refund on 429, header-driven row index — Plan 6

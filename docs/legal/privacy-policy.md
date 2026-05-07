@@ -1,7 +1,7 @@
 # Flip Turn — Privacy Policy
 
 Last updated: 2026-05-05
-Contact: privacy@flipturn.app
+Contact: privacy@flipturn.ca
 
 This is the privacy policy for the Flip Turn closed beta. We wrote it in plain language because the audience is a small group of swim parents in Ontario, and we'd rather be straight with you than hide behind boilerplate.
 
@@ -52,9 +52,9 @@ All sources we scrape are public. We do not bypass authentication, paywalls, or 
 
 Canadian privacy law (PIPEDA) gives you these rights, and we honour them:
 
-- **Access** — Request a copy of the personal data we hold about you. Email privacy@flipturn.app.
+- **Access** — Request a copy of the personal data we hold about you. Email privacy@flipturn.ca.
 - **Correct** — If something is wrong, email us with the correction.
-- **Delete** — Use **Settings → Delete Account** in the app, or email privacy@flipturn.app. This triggers our `DELETE /v1/me` endpoint and removes your account-linked records (see "Data retention" below).
+- **Delete** — Use **Settings → Delete Account** in the app, or email privacy@flipturn.ca. This triggers our `DELETE /v1/me` endpoint and removes your account-linked records (see "Data retention" below).
 - **Withdraw consent** — You can stop using the app and delete your account at any time.
 
 We respond to all requests within 30 days, usually much sooner.
@@ -85,7 +85,7 @@ If we make material changes, we will notify active beta users by email at the ad
 ## Contact
 
 Privacy questions, access requests, deletion requests, complaints:
-**privacy@flipturn.app**
+**privacy@flipturn.ca**
 
 If you are unsatisfied with our response, you may also contact the Office of the Privacy Commissioner of Canada (https://www.priv.gc.ca/).
 

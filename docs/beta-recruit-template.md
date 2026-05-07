@@ -109,7 +109,7 @@ The sheet pairs parent emails with minor athletes' SNC IDs — personal
 information about minors under PIPEDA. Keep it boring:
 
 - Store in a 2FA-protected Google account (ideally the one that owns
-  `flipturn.app`). No link sharing — explicit per-user access only, and
+  `flipturn.ca`). No link sharing — explicit per-user access only, and
   only you should have access.
 - Never paste contents into Slack, email, or any chat tool.
 - If a parent asks to be deleted, hit `DELETE /me` for their account and

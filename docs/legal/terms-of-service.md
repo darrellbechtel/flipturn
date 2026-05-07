@@ -1,7 +1,7 @@
 # Flip Turn — Terms of Service
 
 Last updated: 2026-05-05
-Contact: support@flipturn.app
+Contact: support@flipturn.ca
 
 These are the terms for using the Flip Turn closed beta. By creating an account or using the app, you agree to them.
 
@@ -34,7 +34,7 @@ We reserve the right to rate-limit, suspend, or terminate accounts that violate 
 ## Your account
 
 - You are responsible for keeping your magic-link email address secure.
-- You can delete your account at any time via **Settings → Delete Account**, or by emailing privacy@flipturn.app.
+- You can delete your account at any time via **Settings → Delete Account**, or by emailing privacy@flipturn.ca.
 - We may suspend or terminate accounts that violate these Terms. Where possible, we will give you notice and a chance to respond before doing so.
 
 ## Data accuracy
@@ -43,7 +43,7 @@ The race results in Flip Turn come from third-party public sources. We do our be
 
 - We make **no guarantees** about the correctness, completeness, or timeliness of any result, time, or split.
 - The authoritative record is whatever Swimming Canada and meet hosts publish. If something looks wrong in our app, please verify against the source before relying on it.
-- If you spot a bug in our parsing, please email support@flipturn.app — we want to fix it.
+- If you spot a bug in our parsing, please email support@flipturn.ca — we want to fix it.
 
 ## Beta status
 
@@ -80,6 +80,6 @@ If we make material changes, we will notify active users by email and post an up
 ## Contact
 
 General support, questions about these Terms:
-**support@flipturn.app**
+**support@flipturn.ca**
 
 For privacy-specific requests, see `privacy-policy.md`. For data takedown requests, see `takedown.md`.

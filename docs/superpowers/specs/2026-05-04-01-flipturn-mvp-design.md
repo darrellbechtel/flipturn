@@ -177,7 +177,7 @@ BullMQ queue: scrape-athlete
 
 ### 6.3 Politeness (hard-coded)
 
-- `User-Agent: FlipTurnBot/0.1 (+https://flipturn.app/bot; contact@flipturn.app)`
+- `User-Agent: FlipTurnBot/0.1 (+https://flipturn.ca/bot; contact@flipturn.ca)`
 - Token bucket in Redis: 1 req / 5s per host
 - Daily per-host budget cap (initial: 500 req/day) — fail closed if exceeded, alert via Sentry
 - Honor `robots.txt`: fetch and cache once per day; respect Disallow paths
@@ -198,7 +198,7 @@ BullMQ queue: scrape-athlete
 
 ## 7. API surface
 
-All endpoints under `https://api.flipturn.app/v1` (placeholder; final domain registration is an open item). Auth required on everything except `/auth/magic-link/*`, `/health`, and `/legal/*`.
+All endpoints under `https://api.flipturn.ca/v1` (placeholder; final domain registration is an open item). Auth required on everything except `/auth/magic-link/*`, `/health`, and `/legal/*`.
 
 ```
 # Auth
@@ -308,7 +308,7 @@ Estimated calendar: **8–12 weeks** of evening/weekend work, given Darrell's da
 
 ## 12. Open questions (kept open, not blocking)
 
-- Final FlipTurn domain registration — `flipturn.app` referenced as placeholder in scrape `User-Agent`
+- Final FlipTurn domain registration — `flipturn.ca` referenced as placeholder in scrape `User-Agent`
 - Email sender domain for Resend — likely a subdomain of the above
 - Chart library for `apps/mobile` — `victory-native` vs `react-native-svg-charts`; decide at step 6
 - Whether to bring `packages/sdif-parser` forward as an OSS release before Tier 3 ingestion is in scope (brief lists this as desirable but not v1)

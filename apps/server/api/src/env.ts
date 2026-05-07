@@ -15,7 +15,7 @@ const EnvSchema = z.object({
     .string()
     .transform((v) => (v === '' ? undefined : v))
     .pipe(z.string().min(1).optional()),
-  EMAIL_FROM: z.string().default('Flip Turn <noreply@flipturn.app>'),
+  EMAIL_FROM: z.string().default('Flip Turn <noreply@flipturn.ca>'),
   MOBILE_DEEP_LINK_BASE: z.string().default('flipturn://auth'),
 });
 

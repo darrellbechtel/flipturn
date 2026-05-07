@@ -11,9 +11,9 @@
 - ✅ Plan 5 — Mobile (Expo + auth + onboarding + screens) — landed
 - **Plan 6 — Hosting + closed-beta launch (this plan)**
 
-**Goal:** Take the locally-functional MVP and ship a closed-beta–ready system: Mac Mini production hosting via Cloudflare Tunnel + pm2; real Resend email delivery on a verified `flipturn.app` domain; Expo SDK upgraded so the App Store version of Expo Go works; iOS + Android dev builds distributed via TestFlight + EAS internal links; the Plan 4–5 carry-forward backlog items closed; and a beta-recruit checklist with privacy / TOS / takedown surfaces in place. After this plan, the user can hand a TestFlight link to 10–20 swim parents and the system runs without intervention.
+**Goal:** Take the locally-functional MVP and ship a closed-beta–ready system: Mac Mini production hosting via Cloudflare Tunnel + pm2; real Resend email delivery on a verified `flipturn.ca` domain; Expo SDK upgraded so the App Store version of Expo Go works; iOS + Android dev builds distributed via TestFlight + EAS internal links; the Plan 4–5 carry-forward backlog items closed; and a beta-recruit checklist with privacy / TOS / takedown surfaces in place. After this plan, the user can hand a TestFlight link to 10–20 swim parents and the system runs without intervention.
 
-**Architecture:** No new packages. Existing services (`@flipturn/api`, `@flipturn/workers`, `@flipturn/mobile`) get production configuration, observability, and distribution. The Mac Mini runs `pm2` supervising `apps/server/api` + `apps/server/workers` + `docker compose`'s Postgres/Redis. Cloudflare Tunnel exposes the API to mobile clients without opening home-network ports. Resend sends real magic-link emails from `noreply@flipturn.app`. EAS Build produces signed iOS / Android dev builds for closed-beta install.
+**Architecture:** No new packages. Existing services (`@flipturn/api`, `@flipturn/workers`, `@flipturn/mobile`) get production configuration, observability, and distribution. The Mac Mini runs `pm2` supervising `apps/server/api` + `apps/server/workers` + `docker compose`'s Postgres/Redis. Cloudflare Tunnel exposes the API to mobile clients without opening home-network ports. Resend sends real magic-link emails from `noreply@flipturn.ca`. EAS Build produces signed iOS / Android dev builds for closed-beta install.
 
 **Tech Stack additions:**
 
@@ -36,7 +36,7 @@ The MVP closed beta target is 10–20 swim parents installing the app and using 
 
 1. **The mobile app is installable.** A friend of the founder can scan a QR / tap a TestFlight link and have the Flip Turn app on their phone — without needing Expo Go from the App Store, and without needing access to the Mac Mini's local network.
 2. **The API is publicly reachable** from those phones, on a stable URL, with TLS, and at acceptable latency.
-3. **Magic-link emails actually arrive** in the parents' inboxes from a domain that won't be marked as spam (SPF/DKIM/DMARC aligned to `flipturn.app`).
+3. **Magic-link emails actually arrive** in the parents' inboxes from a domain that won't be marked as spam (SPF/DKIM/DMARC aligned to `flipturn.ca`).
 4. **The scrape pipeline works** against `results.swimming.ca` from the Mac Mini's residential IP. (Plan 5 smoke surfaced a 403 from a different egress; the Mac's IP needs verification, with a fallback if it's also blocked.)
 5. **Errors are observable.** Sentry actually captures unhandled errors in the API + workers; pm2 keeps services running; a heartbeat alerts if the worker stops.
 6. **Beta-tester onboarding is welcoming.** Privacy policy + TOS pages are reachable; a takedown form exists; a support email is monitored.
@@ -77,8 +77,8 @@ These were carried forward from prior reviews; this plan resolves each:
 | Real Redis health         | yes — code change                                                                                                                                           |
 | App icons / splash        | partial — generate brand-derived placeholders programmatically; final-quality icons benefit from a designer                                                 |
 | EAS init / build profiles | partial — write the config; **EAS account setup + first build requires `npx eas-cli login` and Apple/Google developer credentials, which the user must do** |
-| Cloudflare Tunnel         | partial — write config; **the user must `cloudflared tunnel login` (browser auth) and add the DNS record on `flipturn.app`**                                |
-| Resend domain             | no — **the user must verify the domain in the Resend dashboard and add SPF/DKIM/DMARC records on `flipturn.app`**                                           |
+| Cloudflare Tunnel         | partial — write config; **the user must `cloudflared tunnel login` (browser auth) and add the DNS record on `flipturn.ca`**                                 |
+| Resend domain             | no — **the user must verify the domain in the Resend dashboard and add SPF/DKIM/DMARC records on `flipturn.ca`**                                            |
 | Privacy / TOS / takedown  | partial — the agent can draft the markdown; the user accepts legal liability                                                                                |
 | Recruit 10–20 parents     | no — the user's outreach                                                                                                                                    |
 
@@ -922,21 +922,21 @@ REDIS_URL="redis://localhost:56379"
 
 SENTRY_DSN=""
 
-# Resend — get from resend.com after verifying flipturn.app
+# Resend — get from resend.com after verifying flipturn.ca
 
 RESEND*API_KEY="re*..."
-EMAIL_FROM="Flip Turn <noreply@flipturn.app>"
+EMAIL_FROM="Flip Turn <noreply@flipturn.ca>"
 
 # API tuning
 
 PORT=3000
-BASE_URL="https://api.flipturn.app"
-MOBILE_DEEP_LINK_BASE="https://flipturn.app/auth" # Universal Links once enabled (Task 12)
+BASE_URL="https://api.flipturn.ca"
+MOBILE_DEEP_LINK_BASE="https://flipturn.ca/auth" # Universal Links once enabled (Task 12)
 LOG_LEVEL="info"
 
 # Worker politeness
 
-SCRAPE_USER_AGENT="FlipTurnBot/0.1 (+https://flipturn.app/bot; contact@flipturn.app)"
+SCRAPE_USER_AGENT="FlipTurnBot/0.1 (+https://flipturn.ca/bot; contact@flipturn.ca)"
 SCRAPE_RATE_LIMIT_MS=5000
 SCRAPE_DAILY_HOST_BUDGET=500
 ARCHIVE_DIR="/Users/darrell/flipturn-data/raw"
@@ -1018,10 +1018,10 @@ Create `infra/cloudflared/config.yml`:
 #   3. cloudflared tunnel create flipturn-prod
 #   4. Place the printed credentials JSON at the path below
 #   5. Add a CNAME record in the Cloudflare DNS panel:
-#         api.flipturn.app  →  <TUNNEL_UUID>.cfargotunnel.com
-#      (or: cloudflared tunnel route dns flipturn-prod api.flipturn.app)
+#         api.flipturn.ca  →  <TUNNEL_UUID>.cfargotunnel.com
+#      (or: cloudflared tunnel route dns flipturn-prod api.flipturn.ca)
 #   6. Test: cloudflared tunnel run flipturn-prod
-#      Then curl https://api.flipturn.app/v1/health → {"db":"ok","redis":"ok"}
+#      Then curl https://api.flipturn.ca/v1/health → {"db":"ok","redis":"ok"}
 #   7. Wire into pm2: see infra/pm2/ecosystem.config.cjs
 
 # Replace <TUNNEL_UUID> with the tunnel's UUID printed by `tunnel create`.
@@ -1029,7 +1029,7 @@ tunnel: <TUNNEL_UUID>
 credentials-file: /Users/darrell/.cloudflared/<TUNNEL_UUID>.json
 
 ingress:
-  - hostname: api.flipturn.app
+  - hostname: api.flipturn.ca
     service: http://localhost:3000
 
   # Catch-all (required by cloudflared)
@@ -1047,7 +1047,7 @@ After `pm2 start`, the tunnel process should connect within ~10s. From a
 laptop or phone NOT on the home network:
 
 \`\`\`bash
-curl -i https://api.flipturn.app/v1/health
+curl -i https://api.flipturn.ca/v1/health
 \`\`\`
 
 Expected: HTTP 200, body `{"db":"ok","redis":"ok"}`. Cloudflare will
@@ -1058,7 +1058,7 @@ also show the tunnel as "Healthy" in the Zero Trust dashboard.
 
 The implementer flags this task as DONE_WITH_CONCERNS — the agent can write the config files, but the user must:
 
-- Sign in to Cloudflare and ensure `flipturn.app` is in their account
+- Sign in to Cloudflare and ensure `flipturn.ca` is in their account
 - Run `cloudflared tunnel login` (browser auth)
 - Run `cloudflared tunnel create flipturn-prod` (records UUID + credentials JSON)
 - Substitute the real UUID into `infra/cloudflared/config.yml`
@@ -1093,14 +1093,14 @@ for closed beta (up to 3,000 emails/month, 100/day).
 ### One-time: register the sending domain
 
 1. Sign in to https://resend.com (free signup).
-2. Add `flipturn.app` as a sending domain.
+2. Add `flipturn.ca` as a sending domain.
 3. Resend prints SPF, DKIM, and DMARC DNS records. Add them on
-   the Cloudflare DNS panel (or wherever flipturn.app is hosted):
-   - **SPF** — TXT record on `flipturn.app`:
+   the Cloudflare DNS panel (or wherever flipturn.ca is hosted):
+   - **SPF** — TXT record on `flipturn.ca`:
      `v=spf1 include:_spf.resend.com ~all`
    - **DKIM** — Three CNAME records on subdomains like
-     `resend._domainkey.flipturn.app` (Resend prints exact names + values).
-   - **DMARC** — TXT on `_dmarc.flipturn.app`:
+     `resend._domainkey.flipturn.ca` (Resend prints exact names + values).
+   - **DMARC** — TXT on `_dmarc.flipturn.ca`:
      `v=DMARC1; p=quarantine; rua=mailto:<your-monitoring-mailbox>`
 
 4. Click "Verify" in the Resend dashboard. Verification takes 5–60 minutes
@@ -1113,14 +1113,14 @@ for closed beta (up to 3,000 emails/month, 100/day).
 After `pm2 start`, request a magic link:
 
 \`\`\`bash
-curl -X POST https://api.flipturn.app/v1/auth/magic-link/request \\
+curl -X POST https://api.flipturn.ca/v1/auth/magic-link/request \\
 -H 'content-type: application/json' \\
 -d '{"email":"<your-actual-inbox>@gmail.com"}'
 \`\`\`
 
 The email should arrive in 5-30 seconds. Check that:
 
-- It comes from `noreply@flipturn.app` (matches `EMAIL_FROM`)
+- It comes from `noreply@flipturn.ca` (matches `EMAIL_FROM`)
 - It's not in the spam folder
 - The deep link opens the app on the phone (Universal Links — see Task 12)
 ```
@@ -1155,7 +1155,7 @@ gh pr create --title "Plan 6 #10 — Resend setup runbook"
       "distribution": "internal",
       "channel": "development",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.flipturn.app"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.flipturn.ca"
       },
       "ios": {
         "simulator": false
@@ -1165,13 +1165,13 @@ gh pr create --title "Plan 6 #10 — Resend setup runbook"
       "distribution": "internal",
       "channel": "preview",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.flipturn.app"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.flipturn.ca"
       }
     },
     "production": {
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.flipturn.app"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.flipturn.ca"
       },
       "ios": {
         "autoIncrement": true
@@ -1262,7 +1262,7 @@ Add to the `ios` block:
 "ios": {
   "supportsTablet": false,
   "bundleIdentifier": "app.flipturn.mobile",
-  "associatedDomains": ["applinks:flipturn.app"]
+  "associatedDomains": ["applinks:flipturn.ca"]
 }
 ```
 
@@ -1274,7 +1274,7 @@ Add to the `android` block:
   "intentFilters": [
     {
       "action": "VIEW",
-      "data": [{ "scheme": "https", "host": "flipturn.app", "pathPrefix": "/auth" }],
+      "data": [{ "scheme": "https", "host": "flipturn.ca", "pathPrefix": "/auth" }],
       "category": ["BROWSABLE", "DEFAULT"],
       "autoVerify": true
     }
@@ -1341,10 +1341,10 @@ app.route('/.well-known', wellKnownRoutes());
 In production env (`~/.config/flipturn/secrets.env`):
 
 ```
-MOBILE_DEEP_LINK_BASE="https://flipturn.app/auth"
+MOBILE_DEEP_LINK_BASE="https://flipturn.ca/auth"
 ```
 
-The magic-link email body now contains `https://flipturn.app/auth?token=…` instead of `flipturn://auth?token=…`. iOS and Android route the URL to the installed app (or open in the browser if the app isn't installed — graceful fallback).
+The magic-link email body now contains `https://flipturn.ca/auth?token=…` instead of `flipturn://auth?token=…`. iOS and Android route the URL to the installed app (or open in the browser if the app isn't installed — graceful fallback).
 
 ### Step 12.4: Test
 
@@ -1355,8 +1355,8 @@ After EAS build (Task 11) is installed on a device:
 3. Deploy the API.
 4. Verify the verification files are served:
    ```bash
-   curl https://flipturn.app/.well-known/apple-app-site-association
-   curl https://flipturn.app/.well-known/assetlinks.json
+   curl https://flipturn.ca/.well-known/apple-app-site-association
+   curl https://flipturn.ca/.well-known/assetlinks.json
    ```
 5. From the phone, request a magic link. Tap the URL in the received email → should open the app directly without the "Open in Safari?" prompt.
 
@@ -1384,7 +1384,7 @@ SSH to the Mac Mini (or use the Mac itself if it's the same machine). Manually e
 cd ~/flipturn
 set -a && source ~/.config/flipturn/secrets.env && set +a
 
-curl -A "FlipTurnBot/0.1 (+https://flipturn.app/bot; contact@flipturn.app)" \
+curl -A "FlipTurnBot/0.1 (+https://flipturn.ca/bot; contact@flipturn.ca)" \
   -i https://www.swimming.ca/swimmer/4030816/ | head -5
 ```
 
@@ -1394,21 +1394,21 @@ Expected: HTTP 200 (or 301 redirect that resolves to 200). If 403, the residenti
 
 ```bash
 # Enqueue a scrape via the API (requires a session)
-curl -X POST https://api.flipturn.app/v1/auth/magic-link/request \
+curl -X POST https://api.flipturn.ca/v1/auth/magic-link/request \
   -H 'content-type: application/json' \
   -d '{"email":"<test inbox>"}'
 # Get the token from the email
-curl -X POST https://api.flipturn.app/v1/auth/magic-link/consume \
+curl -X POST https://api.flipturn.ca/v1/auth/magic-link/consume \
   -H 'content-type: application/json' \
   -d '{"token":"<token>"}'
 # Capture the sessionToken, then onboard:
-curl -X POST https://api.flipturn.app/v1/athletes/onboard \
+curl -X POST https://api.flipturn.ca/v1/athletes/onboard \
   -H "authorization: Bearer <sessionToken>" \
   -H 'content-type: application/json' \
   -d '{"sncId":"4030816"}'
 
 # Wait 60s and check
-curl https://api.flipturn.app/v1/athletes \
+curl https://api.flipturn.ca/v1/athletes \
   -H "authorization: Bearer <sessionToken>" | jq
 ```
 
@@ -1474,7 +1474,7 @@ Create `docs/legal/privacy-policy.md`. The text should cover:
 - How data is transmitted (TLS via Cloudflare Tunnel)
 - Who it's shared with (no third parties; Resend for email delivery; Sentry for error reporting)
 - User rights (PIPEDA): access, correct, delete (DELETE /v1/me + email request)
-- Contact: `privacy@flipturn.app`
+- Contact: `privacy@flipturn.ca`
 - Last updated date
 - Children's data note: app is intended for parents of minors; the parent operates the account, not the child
 
@@ -1501,7 +1501,7 @@ Create `docs/legal/terms-of-service.md`. Cover:
 Create `docs/legal/takedown.md`. Cover:
 
 - "If you are an athlete, parent, or coach who wants their data removed from
-  Flip Turn, email `takedown@flipturn.app` with the SNC athlete ID(s)."
+  Flip Turn, email `takedown@flipturn.ca` with the SNC athlete ID(s)."
 - "We will remove the data within 7 days and reply to confirm."
 - "Note that the source data on `results.swimming.ca` is operated by
   Swimming Canada, not us. Removing data from Flip Turn does not affect
@@ -1515,14 +1515,14 @@ In `apps/client/mobile/app/(app)/home.tsx`, add a tiny "About" link at the botto
 import { Linking } from 'react-native';
 
 // Below the Sign Out button:
-<Pressable onPress={() => Linking.openURL('https://flipturn.app/legal/privacy-policy')}>
+<Pressable onPress={() => Linking.openURL('https://flipturn.ca/legal/privacy-policy')}>
   <Text style={{ color: colors.textMuted, marginTop: spacing.md, textAlign: 'center' }}>
     Privacy · Terms · Contact
   </Text>
 </Pressable>;
 ```
 
-The text routes the user to the GitHub-published markdown for now (or a static page on `flipturn.app` once the marketing site exists).
+The text routes the user to the GitHub-published markdown for now (or a static page on `flipturn.ca` once the marketing site exists).
 
 ### Step 14.5: Publish the markdown files
 
@@ -1530,7 +1530,7 @@ Two options:
 
 **A. GitHub Pages.** Add `docs/_config.yml` enabling Pages on the `docs/` directory; the legal markdown becomes available at `https://darrellbechtel.github.io/flipturn/legal/privacy-policy.html`.
 
-**B. A small `flipturn.app/legal/*` route on the API.** Serve the markdown rendered to HTML via a tiny `/legal/:slug` route in the API. More work but better domain alignment.
+**B. A small `flipturn.ca/legal/*` route on the API.** Serve the markdown rendered to HTML via a tiny `/legal/:slug` route in the API. More work but better domain alignment.
 
 For MVP, Option A is faster. Pin a Plan 7 follow-up to migrate to Option B when the marketing site is built.
 
@@ -1649,7 +1649,7 @@ familiar across teams and produces nicer logs.
 
 ### 2. Public ingress: Cloudflare Tunnel (named)
 
-`api.flipturn.app` resolves to a Cloudflare Tunnel pointing at
+`api.flipturn.ca` resolves to a Cloudflare Tunnel pointing at
 `localhost:3000` on the Mac Mini. Benefits:
 
 - No port forwarding on the home router
@@ -1662,8 +1662,8 @@ hosted ingress. Cloudflare is more standard.
 
 ### 3. Email delivery: Resend on a verified domain
 
-`flipturn.app` is verified with Resend (SPF + DKIM + DMARC aligned).
-Magic-link emails come from `noreply@flipturn.app`. Free tier (3000/mo)
+`flipturn.ca` is verified with Resend (SPF + DKIM + DMARC aligned).
+Magic-link emails come from `noreply@flipturn.ca`. Free tier (3000/mo)
 covers closed beta well.
 
 Alternative: Postmark (more pricey but better delivery rep) — defer until
@@ -1671,7 +1671,7 @@ delivery becomes a problem.
 
 ### 4. Universal Links / App Links
 
-The magic-link email body uses `https://flipturn.app/auth?token=…` rather
+The magic-link email body uses `https://flipturn.ca/auth?token=…` rather
 than the custom `flipturn://` scheme. iOS Universal Links and Android App
 Links route the URL to the installed app; if the app isn't installed, the
 URL opens in the browser (graceful fallback).
@@ -1779,8 +1779,8 @@ This plan — and the MVP — is complete when:
 - [ ] API has graceful shutdown (10s in-flight wait + idle-connection close)
 - [ ] `/v1/health` actually pings Redis (1s timeout)
 - [ ] pm2 ecosystem.config.cjs deploys all 3 processes from the Mac Mini
-- [ ] Cloudflare Tunnel routes `api.flipturn.app` → `localhost:3000`
-- [ ] `flipturn.app` is verified with Resend; SPF/DKIM/DMARC aligned
+- [ ] Cloudflare Tunnel routes `api.flipturn.ca` → `localhost:3000`
+- [ ] `flipturn.ca` is verified with Resend; SPF/DKIM/DMARC aligned
 - [ ] EAS build profiles produce installable iOS + Android dev builds
 - [ ] Universal Links + App Links route the magic-link URL to the app
 - [ ] Cloudflare 403 status on `www.swimming.ca` from the Mac Mini is documented (works or fallback chosen)
