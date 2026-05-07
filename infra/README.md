@@ -13,9 +13,9 @@ emails from a verified `flipturn.ca` sending domain.
 
 - `pm2/ecosystem.config.cjs` — pm2 process definitions for `flipturn-api`,
   `flipturn-workers`, and `flipturn-tunnel` (cloudflared)
-- `cloudflared/config.yml` — Cloudflare Tunnel routing template
-  (`<TUNNEL_UUID>` placeholders; the operator substitutes after
-  `cloudflared tunnel create`)
+- `cloudflared/config.yml` — Cloudflare Tunnel routing for `api.flipturn.ca`
+  (UUID `1431a0f0-…` baked in; tunnel was created on the Mac Mini under
+  the `hank` user — see file header for redeploy steps)
 
 ## Secrets file (`~/.config/flipturn/secrets.env`)
 
@@ -118,20 +118,25 @@ below.
 
 8. **Set up the Cloudflare Tunnel:**
 
+   The tunnel `flipturn-prod` (UUID `1431a0f0-ad42-43a7-a435-c5fa44a28a71`)
+   has already been created on the Mac Mini. The UUID and credentials path
+   are baked into `infra/cloudflared/config.yml`. To deploy:
+
    ```bash
-   cloudflared tunnel login                    # opens a browser for OAuth
-   cloudflared tunnel create flipturn-prod     # prints the tunnel UUID + credentials path
+   # one-time login (skip if ~/.cloudflared/cert.pem already exists)
+   cloudflared tunnel login
+
+   # route DNS (creates a CNAME api.flipturn.ca -> <UUID>.cfargotunnel.com)
    cloudflared tunnel route dns flipturn-prod api.flipturn.ca
-   ```
 
-   Then copy the template config and substitute the UUID:
-
-   ```bash
+   # drop the config in place
    mkdir -p ~/.config/cloudflared
    cp infra/cloudflared/config.yml ~/.config/cloudflared/config.yml
-   # Edit ~/.config/cloudflared/config.yml and replace both <TUNNEL_UUID> occurrences
-   # with the UUID printed by `tunnel create`.
    ```
+
+   If the tunnel ever has to be re-created (e.g. credentials lost), update
+   `infra/cloudflared/config.yml` with the new UUID and credentials path
+   and land that as a separate PR.
 
 9. **Start the pm2 stack:**
 
