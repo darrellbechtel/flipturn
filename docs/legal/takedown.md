@@ -1,13 +1,13 @@
 # Flip Turn — Data Takedown
 
 Last updated: 2026-05-05
-Contact: takedown@flipturn.app
+Contact: takedown@flipturn.ca
 
 If you are a swimmer, parent, or coach who wants athlete data removed from Flip Turn, this page is for you.
 
 ## How to request a takedown
 
-Email **takedown@flipturn.app** with the following:
+Email **takedown@flipturn.ca** with the following:
 
 1. The **Swimming Canada (SNC) athlete ID(s)** you want removed. You can find this on results.swimming.ca on the athlete's profile page.
 2. Your **relationship to the swimmer** (the swimmer themselves, parent or legal guardian, head coach of the swimmer's registered club, etc.).
@@ -36,6 +36,6 @@ We process takedown requests in good faith and prioritize the swimmer's privacy.
 
 ## Contact
 
-**takedown@flipturn.app**
+**takedown@flipturn.ca**
 
 For broader privacy questions, see `privacy-policy.md`. For terms of use, see `terms-of-service.md`.

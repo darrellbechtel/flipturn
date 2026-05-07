@@ -33,7 +33,7 @@ to protect secret data. Spec §9 chose magic-link email + long-lived sessions.
 ### 3. Email delivery
 
 - Production: Resend (chosen for free tier + good DX). `EMAIL_FROM` is a
-  configured envelope. The `noreply@flipturn.app` placeholder will be
+  configured envelope. The `noreply@flipturn.ca` placeholder will be
   replaced with the verified domain in Plan 6.
 - Tests / dev without `RESEND_API_KEY`: `InMemoryEmailSender` captures
   messages on a per-process outbox so tests can extract magic-link tokens
@@ -83,4 +83,4 @@ sub-app, with throwable `ApiError` classes carrying status + code.)
   Plan 6 should monitor and have a Postmark / SES fallback.
 - Email delivery is the auth primitive. If Gmail/Apple flag the sending
   domain, the entire system is unusable. Plan 6 should set up SPF/DKIM/DMARC
-  on `flipturn.app` before launch.
+  on `flipturn.ca` before launch.

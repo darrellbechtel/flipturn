@@ -358,7 +358,7 @@ Tier 2 video features + Tier 3:
 
 ### Mandatory safeguards from day one
 
-- Identifying User-Agent: `FlipTurnBot/1.0 (+https://flipturn.app/bot)` with contact email
+- Identifying User-Agent: `FlipTurnBot/1.0 (+https://flipturn.ca/bot)` with contact email
 - Rate limit: hard-cap 1 req/5s per source; per-day per-host budgets
 - Aggressive caching: never re-scrape a meet once captured
 - robots.txt compliance even when technically unnecessary

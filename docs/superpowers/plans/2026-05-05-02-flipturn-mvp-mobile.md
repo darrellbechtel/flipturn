@@ -3031,7 +3031,7 @@ When all of the above are checked, hand off to Plan 6 — the final plan: hostin
 
 ## Open items deferred to Plan 6
 
-- Real Resend wiring + `flipturn.app` domain verification (SPF/DKIM/DMARC)
+- Real Resend wiring + `flipturn.ca` domain verification (SPF/DKIM/DMARC)
 - TestFlight + Expo internal-link distribution
 - pm2 production config + Cloudflare Tunnel
 - Sentry actually capturing errors (the API and workers `Sentry.init` is wired but not instrumented)

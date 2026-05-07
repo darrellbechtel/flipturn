@@ -172,7 +172,7 @@ Specifically:
 
 **Politeness defaults (per design spec §6.3):**
 
-- User-Agent: `FlipTurnBot/0.1 (+https://flipturn.app/bot; contact@flipturn.app)`
+- User-Agent: `FlipTurnBot/0.1 (+https://flipturn.ca/bot; contact@flipturn.ca)`
 - Rate limit: 1 req / 5s per host (token bucket, host = registrable domain).
 - Daily per-host budget: 500 req/day.
 - Honor robots.txt; cache for 24h. Refuse to fetch any path matching a

@@ -7,7 +7,7 @@ runtime — they're operational scaffolding.
 The MVP target host is a Mac Mini on a residential network. Cloudflare Tunnel
 exposes the API to mobile clients without opening home-network ports; pm2
 supervises the API + workers + tunnel processes; Resend delivers magic-link
-emails from a verified `flipturn.app` sending domain.
+emails from a verified `flipturn.ca` sending domain.
 
 ## Files
 
@@ -35,18 +35,18 @@ REDIS_URL="redis://localhost:56379"
 # Sentry — get the DSN from sentry.io (free tier; one project per service is fine)
 SENTRY_DSN=""
 
-# Resend — get from resend.com after verifying flipturn.app (see "Resend setup" below)
+# Resend — get from resend.com after verifying flipturn.ca (see "Resend setup" below)
 RESEND_API_KEY="re_..."
-EMAIL_FROM="Flip Turn <noreply@flipturn.app>"
+EMAIL_FROM="Flip Turn <noreply@flipturn.ca>"
 
 # API tuning
 PORT=3000
-BASE_URL="https://api.flipturn.app"
-MOBILE_DEEP_LINK_BASE="https://flipturn.app/auth"  # Universal Links once enabled (Plan 6 Task 12)
+BASE_URL="https://api.flipturn.ca"
+MOBILE_DEEP_LINK_BASE="https://flipturn.ca/auth"  # Universal Links once enabled (Plan 6 Task 12)
 LOG_LEVEL="info"
 
 # Worker politeness
-SCRAPE_USER_AGENT="FlipTurnBot/0.1 (+https://flipturn.app/bot; contact@flipturn.app)"
+SCRAPE_USER_AGENT="FlipTurnBot/0.1 (+https://flipturn.ca/bot; contact@flipturn.ca)"
 SCRAPE_RATE_LIMIT_MS=5000
 SCRAPE_DAILY_HOST_BUDGET=500
 ARCHIVE_DIR="/Users/darrell/flipturn-data/raw"
@@ -121,7 +121,7 @@ below.
    ```bash
    cloudflared tunnel login                    # opens a browser for OAuth
    cloudflared tunnel create flipturn-prod     # prints the tunnel UUID + credentials path
-   cloudflared tunnel route dns flipturn-prod api.flipturn.app
+   cloudflared tunnel route dns flipturn-prod api.flipturn.ca
    ```
 
    Then copy the template config and substitute the UUID:
@@ -150,7 +150,7 @@ After `pm2 start`, the tunnel process should connect within ~10 seconds. From
 a laptop or phone **not** on the home network:
 
 ```bash
-curl -i https://api.flipturn.app/v1/health
+curl -i https://api.flipturn.ca/v1/health
 ```
 
 Expected: HTTP 200, body `{"db":"ok","redis":"ok"}`. Cloudflare will also
@@ -194,7 +194,7 @@ To remove the Cloudflare Tunnel itself:
 
 ```bash
 cloudflared tunnel delete flipturn-prod
-# Then remove the api.flipturn.app CNAME in the Cloudflare DNS panel.
+# Then remove the api.flipturn.ca CNAME in the Cloudflare DNS panel.
 ```
 
 ## Resend setup
@@ -205,14 +205,14 @@ for closed beta (up to 3,000 emails/month, 100/day).
 ### One-time: register the sending domain
 
 1. Sign in to https://resend.com (free signup).
-2. Add `flipturn.app` as a sending domain.
+2. Add `flipturn.ca` as a sending domain.
 3. Resend prints SPF, DKIM, and DMARC DNS records. Add them on the Cloudflare
-   DNS panel (or wherever `flipturn.app` is hosted):
-   - **SPF** — TXT record on `flipturn.app`:
+   DNS panel (or wherever `flipturn.ca` is hosted):
+   - **SPF** — TXT record on `flipturn.ca`:
      `v=spf1 include:_spf.resend.com ~all`
    - **DKIM** — Three CNAME records on subdomains like
-     `resend._domainkey.flipturn.app` (Resend prints exact names + values).
-   - **DMARC** — TXT on `_dmarc.flipturn.app`:
+     `resend._domainkey.flipturn.ca` (Resend prints exact names + values).
+   - **DMARC** — TXT on `_dmarc.flipturn.ca`:
      `v=DMARC1; p=quarantine; rua=mailto:<your-monitoring-mailbox>`
 4. Click **Verify** in the Resend dashboard. Verification takes 5–60 minutes
    depending on DNS propagation.
@@ -224,14 +224,14 @@ for closed beta (up to 3,000 emails/month, 100/day).
 After `pm2 start`, request a magic link:
 
 ```bash
-curl -X POST https://api.flipturn.app/v1/auth/magic-link/request \
+curl -X POST https://api.flipturn.ca/v1/auth/magic-link/request \
   -H 'content-type: application/json' \
   -d '{"email":"<your-actual-inbox>@gmail.com"}'
 ```
 
 The email should arrive in 5–30 seconds. Check that:
 
-- It comes from `noreply@flipturn.app` (matches `EMAIL_FROM`)
+- It comes from `noreply@flipturn.ca` (matches `EMAIL_FROM`)
 - It's not in the spam folder
 - The deep link opens the app on the phone (Universal Links — see Plan 6 Task 12)
 
@@ -266,10 +266,10 @@ it in the Plan 6 final report so the user can pick a fallback.
   `pm2 logs <name> --err --lines 200` to see the recent crashes. The most
   common causes are a missing/typo'd key in `secrets.env` or Postgres/Redis
   not running (`docker ps` should list both).
-- **`cloudflared` connects but `api.flipturn.app` returns 502:** the tunnel
+- **`cloudflared` connects but `api.flipturn.ca` returns 502:** the tunnel
   is up but `localhost:3000` is not. Check `pm2 status flipturn-api` and
   `pm2 logs flipturn-api`.
-- **DNS for `api.flipturn.app` doesn't resolve:** confirm the CNAME exists in
+- **DNS for `api.flipturn.ca` doesn't resolve:** confirm the CNAME exists in
   the Cloudflare DNS panel and is **proxied** (orange cloud). Cloudflare
   Tunnel only works through proxied records.
 - **Magic-link emails go to spam:** verify SPF / DKIM / DMARC are all green

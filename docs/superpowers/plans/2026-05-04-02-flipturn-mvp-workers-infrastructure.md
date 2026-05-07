@@ -269,10 +269,10 @@ Use `curl` (or a browser "Save Page As") to grab two fixtures:
 
 ```bash
 mkdir -p apps/workers/fixtures
-curl -A "FlipTurnBot/0.1 (+https://flipturn.app/bot; contact@flipturn.app)" \
+curl -A "FlipTurnBot/0.1 (+https://flipturn.ca/bot; contact@flipturn.ca)" \
   -o apps/workers/fixtures/snc-athlete-sample.html \
   "<actual athlete URL>"
-curl -A "FlipTurnBot/0.1 (+https://flipturn.app/bot; contact@flipturn.app)" \
+curl -A "FlipTurnBot/0.1 (+https://flipturn.ca/bot; contact@flipturn.ca)" \
   -o apps/workers/fixtures/snc-meet-sample.html \
   "<actual meet URL>"
 ```
@@ -378,7 +378,7 @@ vs Playwright for JS-rendered SPAs) and constrains the rest of the worker design
 
 **Politeness defaults (per design spec §6.3):**
 
-- User-Agent: `FlipTurnBot/0.1 (+https://flipturn.app/bot; contact@flipturn.app)`
+- User-Agent: `FlipTurnBot/0.1 (+https://flipturn.ca/bot; contact@flipturn.ca)`
 - Rate limit: 1 req / 5s per host
 - Daily per-host budget: 500 req/day
 - Honor robots.txt; cache for 24h
@@ -460,7 +460,7 @@ const EnvSchema = z.object({
   // Politeness defaults — overridable for testing.
   SCRAPE_USER_AGENT: z
     .string()
-    .default('FlipTurnBot/0.1 (+https://flipturn.app/bot; contact@flipturn.app)'),
+    .default('FlipTurnBot/0.1 (+https://flipturn.ca/bot; contact@flipturn.ca)'),
   SCRAPE_RATE_LIMIT_MS: z.coerce.number().int().positive().default(5000),
   SCRAPE_DAILY_HOST_BUDGET: z.coerce.number().int().positive().default(500),
   // Path under repo root for raw artifact archive.
@@ -546,7 +546,7 @@ Read the current `.env.example`. Append these lines (preserving the existing con
 # Workers (apps/workers)
 SENTRY_DSN=                          # optional; leave blank to disable Sentry
 LOG_LEVEL=debug                      # one of: fatal/error/warn/info/debug/trace
-SCRAPE_USER_AGENT="FlipTurnBot/0.1 (+https://flipturn.app/bot; contact@flipturn.app)"
+SCRAPE_USER_AGENT="FlipTurnBot/0.1 (+https://flipturn.ca/bot; contact@flipturn.ca)"
 SCRAPE_RATE_LIMIT_MS=5000
 SCRAPE_DAILY_HOST_BUDGET=500
 ARCHIVE_DIR=./data/raw
