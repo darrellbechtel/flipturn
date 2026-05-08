@@ -35,3 +35,59 @@ export async function enqueueScrapeAthlete(
   const added = await queue.add('scrape', job, options);
   return added.id ?? '<no-id>';
 }
+
+// ---------------------------------------------------------------------------
+// Priority warmer queue: hydrates the athlete search index by walking
+// SwimRankings result pages for each known club.
+// ---------------------------------------------------------------------------
+
+export const PRIORITY_WARMER_QUEUE = 'priority-warmer';
+
+export interface PriorityWarmerJob {
+  /** Free-text club name used as the search query against SwimRankings. */
+  readonly clubName: string;
+  /** What triggered this run: scheduled cron or an admin request. */
+  readonly reason: 'cron' | 'admin';
+}
+
+let _warmerQueue: Queue<PriorityWarmerJob> | undefined;
+
+export function getPriorityWarmerQueue(): Queue<PriorityWarmerJob> {
+  if (!_warmerQueue) {
+    _warmerQueue = new Queue<PriorityWarmerJob>(PRIORITY_WARMER_QUEUE, {
+      connection: getRedis(),
+      defaultJobOptions: {
+        removeOnComplete: { count: 100 },
+        removeOnFail: { count: 1000 },
+      },
+    });
+  }
+  return _warmerQueue;
+}
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Enqueue a priority-warmer run for one club. Each (clubName, UTC day) pair
+ * is deduplicated via `jobId: warm:<clubName>:<dayBucket>` so that admin
+ * triggers and the daily cron can't double-up on the same club within a day.
+ */
+export async function enqueueWarmerRun(
+  clubName: string,
+  reason: PriorityWarmerJob['reason'] = 'cron',
+  delayMs = 0,
+): Promise<string> {
+  const dayBucket = Math.floor(Date.now() / ONE_DAY_MS);
+  const queue = getPriorityWarmerQueue();
+  const added = await queue.add(
+    `warm:${clubName}`,
+    { clubName, reason },
+    {
+      delay: delayMs,
+      attempts: 5,
+      backoff: { type: 'exponential', delay: 60_000 },
+      jobId: `warm:${clubName}:${dayBucket}`,
+    },
+  );
+  return added.id ?? '<no-id>';
+}
