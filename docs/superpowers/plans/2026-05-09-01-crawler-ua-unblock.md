@@ -32,11 +32,14 @@ Add to `apps/server/workers/src/fetch.ts` near the top of the file (above `polit
 // Header policy — see docs/adr/0007-crawler-ua-policy.md.
 // `From:` is the only transparency signal we retain; if it's dropped, ADR 0007's
 // justification collapses. The regression test below locks it in.
+// Chrome version string is a maintenance constant — bump every 6–12 months
+// or sooner if WAFs start treating stale Chrome versions as suspicious.
+// Tests assert the value is present, not what it equals.
 export const CRAWLER_USER_AGENT =
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 ' +
-  '(KHTML, like Gecko) Version/17.5 Safari/605.1.15';
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
+  '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 export const CRAWLER_FROM = 'flipturn-ops@flipturn.ca';
-export const CRAWLER_ACCEPT = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
+export const CRAWLER_ACCEPT = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8';
 export const CRAWLER_ACCEPT_LANGUAGE = 'en-CA,en;q=0.9,fr-CA;q=0.8';
 
 export const CRAWLER_DEFAULT_HEADERS: Readonly<Record<string, string>> = Object.freeze({
@@ -155,9 +158,9 @@ If Docker postgres + redis are running locally, fire one curl through the new he
 
 ```bash
 curl -sS -o /dev/null -w 'HTTP %{http_code}\n' \
-  -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15" \
+  -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" \
   -H "From: flipturn-ops@flipturn.ca" \
-  -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" \
+  -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8" \
   -H "Accept-Language: en-CA,en;q=0.9,fr-CA;q=0.8" \
   "https://www.swimming.ca/?s=Felix+Bechtel"
 ```

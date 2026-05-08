@@ -31,12 +31,12 @@ Concretely, on every outbound request from `politeFetch()`:
 
 | Header           | Value                                                                                                       |
 | ---------------- | ----------------------------------------------------------------------------------------------------------- |
-| `User-Agent`     | `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15` |
-| `Accept`         | `text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8`                                            |
+| `User-Agent`     | `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36` |
+| `Accept`         | `text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8`                       |
 | `Accept-Language`| `en-CA,en;q=0.9,fr-CA;q=0.8`                                                                                 |
 | `From`           | `flipturn-ops@flipturn.ca`                                                                                   |
 
-The Safari UA is chosen over Chrome because it's stable across point releases (Chrome's version string changes monthly) and reduces the risk that a future crawler version drifts behind the real UA fleet.
+Chrome's version string drifts (~ monthly stable releases). The constant locked here is bumped as part of routine maintenance — not at every Chrome release, but when the locked version starts aging visibly (call it every 6–12 months, or sooner if WAFs become aggressive about UA freshness). The version string is a single named constant so the bump is a one-line PR; tests assert the value is *present*, not what it equals, so freshness churn is cheap.
 
 ## Why this is acceptable
 
