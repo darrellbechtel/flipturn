@@ -16,6 +16,11 @@ emails from a verified `flipturn.ca` sending domain.
 - `cloudflared/config.yml` — Cloudflare Tunnel routing for `api.flipturn.ca`
   (UUID `1431a0f0-…` baked in; tunnel was created on the Mac Mini under
   the `hank` user — see file header for redeploy steps)
+- `deploy/auto-deploy.sh` — pull-based deploy script, run by a launchd
+  timer; see "Auto-deploy on merge" below
+- `deploy/com.flipturn.deploy.plist.template` — LaunchAgent template that
+  drives the timer (rendered with the deploying user's `$HOME` at install
+  time)
 
 ## Secrets file (`~/.config/flipturn/secrets.env`)
 
@@ -267,14 +272,64 @@ pm2 reload flipturn-workers
 pm2 monit                                  # live CPU/memory dashboard
 ```
 
-## Updating
+## Auto-deploy on merge
+
+The Mac Mini polls `origin/main` every two minutes via a launchd timer and
+deploys anything new. CI on `main` already gates merges (typecheck, lint,
+vitest), so the timer trusts that whatever reaches `origin/main` is safe
+to ship.
+
+The deploy script (`infra/deploy/auto-deploy.sh`) runs:
+
+1. `git fetch` + bail out if `HEAD == origin/main`
+2. Refuse if the working tree is dirty (defends against ad-hoc edits)
+3. `git pull --ff-only`, `pnpm install --frozen-lockfile`,
+   `prisma migrate deploy`, `pm2 reload <ecosystem.config.cjs> --update-env`
+
+A `mkdir`-based lockfile prevents concurrent runs. All output streams to
+`~/.flipturn-deploy.log`.
+
+### One-time install
 
 ```bash
-cd ~/flipturn
-git pull
-pnpm install
-pnpm db:migrate
-pm2 reload flipturn-api flipturn-workers
+# the script ships executable in the repo, but verify after a fresh clone:
+chmod +x infra/deploy/auto-deploy.sh
+
+# render the LaunchAgent plist with this user's $HOME baked in
+mkdir -p ~/Library/LaunchAgents
+sed "s|__HOME__|$HOME|g" infra/deploy/com.flipturn.deploy.plist.template \
+  > ~/Library/LaunchAgents/com.flipturn.deploy.plist
+
+# load it; `RunAtLoad=true` triggers an immediate first run (no-op if HEAD matches)
+launchctl load ~/Library/LaunchAgents/com.flipturn.deploy.plist
+```
+
+### Operations
+
+```bash
+tail -f ~/.flipturn-deploy.log              # follow the deploy log
+launchctl list | grep com.flipturn.deploy   # confirm the agent is loaded
+
+# disable temporarily (e.g. during a hotfix you want to land manually)
+launchctl unload ~/Library/LaunchAgents/com.flipturn.deploy.plist
+
+# re-enable
+launchctl load ~/Library/LaunchAgents/com.flipturn.deploy.plist
+
+# force a deploy now without waiting for the next tick
+~/code/flipturn/infra/deploy/auto-deploy.sh
+```
+
+## Manual deploy (fallback)
+
+If auto-deploy is disabled or you're debugging it, the script's steps are:
+
+```bash
+cd ~/code/flipturn
+git pull --ff-only
+pnpm install --frozen-lockfile
+pnpm --filter @flipturn/db exec prisma migrate deploy
+pm2 reload infra/pm2/ecosystem.config.cjs --update-env
 ```
 
 The tunnel does not need a reload unless `cloudflared` itself was upgraded or
