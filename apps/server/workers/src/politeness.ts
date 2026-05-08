@@ -2,12 +2,43 @@ import type { Redis } from 'ioredis';
 import { request } from 'undici';
 import { getEnv } from './env.js';
 import { getLogger } from './logger.js';
+import {
+  sampleInterRequestDelayMs,
+  sampleReadPauseMs,
+  type Rng,
+} from './scheduler/window.js';
 
 export interface TokenBucketOptions {
-  /** Minimum interval between token grants in ms. */
+  /**
+   * Minimum interval between token grants in ms — acts as a *floor* under
+   * the sampled inter-request delay. The actual per-request wait is
+   * `max(rateLimitMs, sampleInterRequestDelayMs() + sampleReadPauseMs())`,
+   * so callers supplying a high floor still work, while the default path
+   * gets the 1500–4000 ms sampled cadence with an occasional read pause.
+   */
   readonly rateLimitMs: number;
   /** Maximum tokens granted per host per UTC day. Optional; if unset, unlimited. */
   readonly dailyBudget?: number | undefined;
+  /**
+   * Optional injectable RNG for deterministic tests. Defaults to Math.random
+   * inside the sampler helpers. Production callers should leave unset.
+   */
+  readonly rng?: Rng | undefined;
+}
+
+/**
+ * Compute the wait (ms) the caller should sleep before the next request to
+ * `host`. Combines the configured `rateLimitMs` floor with a sampled
+ * inter-request delay (and an occasional short read pause) so the cadence
+ * looks human-paced rather than metronomic. Exposed for tests; production
+ * code should call {@link acquireToken} which handles the actual sleeping.
+ */
+export function computeSleepBetweenRequestsMs(
+  rateLimitMs: number,
+  rng?: Rng,
+): number {
+  const sampled = sampleInterRequestDelayMs(rng) + sampleReadPauseMs(rng);
+  return Math.max(rateLimitMs, sampled);
 }
 
 const lastTouchKey = (host: string) => `politeness:last:${host}`;
@@ -44,7 +75,11 @@ export async function acquireToken(
   const lastStr = await redis.get(lastKey);
   const last = lastStr ? parseInt(lastStr, 10) : 0;
   const now = Date.now();
-  const wait = Math.max(0, last + options.rateLimitMs - now);
+  // Sample a fresh per-request delay so the cadence isn't metronomic. The
+  // configured `rateLimitMs` acts as a floor — callers passing a higher
+  // value (e.g. via 429 backoff) still get at least that wait.
+  const delay = computeSleepBetweenRequestsMs(options.rateLimitMs, options.rng);
+  const wait = Math.max(0, last + delay - now);
   if (wait > 0) {
     await new Promise((resolve) => setTimeout(resolve, wait));
   }

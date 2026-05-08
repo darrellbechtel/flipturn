@@ -23,11 +23,19 @@ describe('applyBackoff', () => {
     await applyBackoff(redis, 'backoff-test.example.com', 200);
 
     const start = Date.now();
-    await acquireToken(redis, 'backoff-test.example.com', { rateLimitMs: 0 });
+    // ZERO_RNG → sampled inter-request = 1500ms, read pause = 1ms (rng()=0
+    // < 0.2). On top of the 200ms backoff floor pushed into `last`, the
+    // actual wait is roughly 200 + 1501 = ~1700ms.
+    await acquireToken(redis, 'backoff-test.example.com', {
+      rateLimitMs: 0,
+      rng: () => 0,
+    });
     const elapsed = Date.now() - start;
 
+    // We still verify the backoff was honored (>= ~200ms). Upper bound is
+    // bounded by the sampled-delay contribution under ZERO_RNG (~1700ms).
     expect(elapsed).toBeGreaterThanOrEqual(190);
-    expect(elapsed).toBeLessThan(400);
+    expect(elapsed).toBeLessThan(2000);
   });
 });
 
