@@ -2,8 +2,29 @@ import { request } from 'undici';
 import { getEnv } from './env.js';
 import { getLogger } from './logger.js';
 import { getRedis } from './redis.js';
-import { acquireToken, applyBackoff, isAllowedByRobots, getUserAgent } from './politeness.js';
+import { acquireToken, applyBackoff, isAllowedByRobots } from './politeness.js';
 import { archiveResponse } from './archive.js';
+
+// Header policy — see docs/adr/0007-crawler-ua-policy.md.
+// `From:` is the only transparency signal we retain; if it's dropped, ADR 0007's
+// justification collapses. The regression test in fetch.test.ts locks it in.
+// Chrome version string is a maintenance constant — bump every 6–12 months
+// or sooner if WAFs start treating stale Chrome versions as suspicious.
+// Tests assert the value is present, not what it equals.
+export const CRAWLER_USER_AGENT =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
+  '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+export const CRAWLER_FROM = 'flipturn-ops@flipturn.ca';
+export const CRAWLER_ACCEPT =
+  'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8';
+export const CRAWLER_ACCEPT_LANGUAGE = 'en-CA,en;q=0.9,fr-CA;q=0.8';
+
+export const CRAWLER_DEFAULT_HEADERS: Readonly<Record<string, string>> = Object.freeze({
+  'User-Agent': CRAWLER_USER_AGENT,
+  From: CRAWLER_FROM,
+  Accept: CRAWLER_ACCEPT,
+  'Accept-Language': CRAWLER_ACCEPT_LANGUAGE,
+});
 
 export interface FetchRequest {
   readonly url: string;
@@ -66,10 +87,7 @@ export async function politeFetch(req: FetchRequest): Promise<FetchResult> {
   const fetchedAt = new Date();
   const { statusCode, headers, body } = await request(req.url, {
     method: 'GET',
-    headers: {
-      'user-agent': getUserAgent(),
-      accept: 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
-    },
+    headers: { ...CRAWLER_DEFAULT_HEADERS },
   });
 
   if (statusCode === 429) {

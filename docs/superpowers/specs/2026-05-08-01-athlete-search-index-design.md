@@ -141,7 +141,7 @@ A weekday crawl that fires at 03:00 with metronomic 1-req/sec spacing is a textb
 
 **No spike on resume.** When the scheduler skips a day (holiday, downtime, the window passes without a chance to enqueue), the next active day's batch grows by at most 50% — never doubles. Better to extend the refresh cycle than to look like a backlog drain.
 
-**No User-Agent rotation.** We send a static, identifiable User-Agent that names Flipturn and a contact URL. Goal is not to evade detection; it is to not trip naive heuristics while remaining transparent about who we are. If Swimming Canada's ops ever asks, we want them to find us first.
+**User-Agent and transparency posture** are recorded in [ADR 0007](../../adr/0007-crawler-ua-policy.md), which supersedes the original "transparent identifiable UA" stance after the WAF blocked it during smoke testing.
 
 ### 5.3 Source pages & parsers
 
