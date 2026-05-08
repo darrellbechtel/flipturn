@@ -22,8 +22,10 @@ export default tseslint.config(
     },
   },
   {
-    // Mobile (Expo / React Native) uses CommonJS for build configs
-    files: ['apps/client/mobile/**/*.{js,cjs}'],
+    // CommonJS files (`.cjs`) have to use `require` by definition.
+    // Mobile (Expo / React Native) build configs are also CJS but happen to
+    // use a `.js` extension, so they're matched explicitly.
+    files: ['**/*.cjs', 'apps/client/mobile/**/*.js'],
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
     },
