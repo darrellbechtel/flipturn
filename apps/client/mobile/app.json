@@ -15,14 +15,23 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.flipturn.mobile"
+      "bundleIdentifier": "app.flipturn.mobile",
+      "associatedDomains": ["applinks:flipturn.ca"]
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1F3D5C"
       },
-      "package": "app.flipturn.mobile"
+      "package": "app.flipturn.mobile",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [{ "scheme": "https", "host": "flipturn.ca", "pathPrefix": "/auth" }],
+          "category": ["BROWSABLE", "DEFAULT"],
+          "autoVerify": true
+        }
+      ]
     },
     "plugins": ["expo-router", "expo-secure-store"],
     "experiments": {

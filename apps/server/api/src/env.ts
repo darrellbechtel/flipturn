@@ -17,6 +17,18 @@ const EnvSchema = z.object({
     .pipe(z.string().min(1).optional()),
   EMAIL_FROM: z.string().default('Flip Turn <noreply@flipturn.ca>'),
   MOBILE_DEEP_LINK_BASE: z.string().default('flipturn://auth'),
+  // Universal Links / App Links — populated after the first EAS build prints
+  // the Apple Team ID and the Android signing-cert SHA-256. When unset, the
+  // /.well-known routes return 404 (no association published).
+  // Uses preprocess so a missing var is treated the same as `KEY=""`.
+  IOS_APP_TEAM_ID: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.string().min(1).optional(),
+  ),
+  ANDROID_APP_SHA256: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.string().min(1).optional(),
+  ),
 });
 
 export type ApiEnv = z.infer<typeof EnvSchema>;

@@ -45,6 +45,12 @@ BASE_URL="https://api.flipturn.ca"
 MOBILE_DEEP_LINK_BASE="https://flipturn.ca/auth"  # Universal Links once enabled (Plan 6 Task 12)
 LOG_LEVEL="info"
 
+# Universal Links / App Links — fill in after first EAS build (Plan 6 Task 11).
+# Until populated, /.well-known/{apple-app-site-association,assetlinks.json}
+# return 404 (no app association published).
+IOS_APP_TEAM_ID=""           # Apple Developer Team ID, e.g. ABCD123456
+ANDROID_APP_SHA256=""        # SHA-256 cert fingerprint from EAS build output
+
 # Worker politeness
 SCRAPE_USER_AGENT="FlipTurnBot/0.1 (+https://flipturn.ca/bot; contact@flipturn.ca)"
 SCRAPE_RATE_LIMIT_MS=5000
