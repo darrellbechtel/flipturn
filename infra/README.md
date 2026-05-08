@@ -349,9 +349,20 @@ options in priority order are:
    rotating residential IPs. Adds ~$50/month; only worth it if the closed
    beta proves the wedge.
 4. **Manual import.** At MVP scale (10–20 parents), the founder can manually
-   fetch each athlete's page from a personal browser, save the HTML, and run
-   `pnpm db:seed-fixture` (extended to take a path argument). Tedious but
-   unblocks the beta.
+   fetch each athlete's page from a personal browser (residential, JS-enabled,
+   no bot UA), save the HTML, and run:
+
+   ```bash
+   pnpm db:seed-fixture \
+     --html /path/to/saved-athlete.html \
+     --sncId 1234567 \
+     --email parent@example.com
+   ```
+
+   The script links the saved athlete to the parent's user record and prints
+   a one-shot sign-in deep link. Tedious but unblocks the beta with zero
+   architecture changes — same parser/reconciler/PB pipeline.
+
 5. **Reach out to SNC.** The spec's strategic plan eventually moves to a
    licensed data partnership. A 403 from public scraping accelerates that
    conversation.
