@@ -68,6 +68,7 @@ model Club {
   city          String?
   rosterUrl     String?                   // canonical roster page
   lastCrawledAt DateTime?
+  crawlPriority Int      @default(0)      // higher = crawled sooner; see §5.7
   athletes      Athlete[]
   memberships   ClubMembership[]
   createdAt     DateTime @default(now())
@@ -75,6 +76,7 @@ model Club {
 
   @@index([province])
   @@index([name])
+  @@index([crawlPriority, lastCrawledAt])  // composite for the scheduler's main query
 }
 ```
 
@@ -135,7 +137,7 @@ A weekday crawl that fires at 03:00 with metronomic 1-req/sec spacing is a textb
 2. **Time-of-day jitter** — each scheduled run draws its fire time from a triangular distribution peaked at **19:30 ET** with the 16:00–22:30 window as the support. Recomputed every day; never enqueued more than 24 h in advance.
 3. **Per-request jitter** — `politeFetch()` already serializes; we change its inter-request delay from a fixed 1 s to **uniform random 1500–4000 ms**, with an additional 0–800 ms "read pause" injected on roughly 1 in 5 requests (mimics a human pausing on a result). Plus an existing exponential backoff on 403/429/5xx.
 
-**Fan-out strategy.** Each crawl day the scheduler picks ⌈ totalClubs / 30 ⌉ clubs ordered by oldest `lastCrawledAt` first, then **shuffles** that batch and assigns each club a per-job delay drawn from a uniform distribution across the day's active window. Result: ~1500 Canadian clubs ÷ 30 ≈ 50 club roster fetches per active day, spread organically across ~6.5 hours, ~ 1 fetch every 8 minutes — well below any rate that would look automated, and the full dataset still cycles roughly monthly.
+**Fan-out strategy.** Each crawl day the scheduler picks ⌈ totalClubs / 30 ⌉ clubs ordered by `crawlPriority DESC, lastCrawledAt ASC NULLS FIRST` (priority first, then oldest). It **shuffles** that batch and assigns each club a per-job delay drawn from a uniform distribution across the day's active window. Result: ~1500 Canadian clubs ÷ 30 ≈ 50 club roster fetches per active day, spread organically across ~6.5 hours, ~ 1 fetch every 8 minutes — well below any rate that would look automated, and the full dataset still cycles roughly monthly. Priority clubs (§5.7) effectively jump the queue on day 1 and stay fresher than national average thereafter.
 
 **No spike on resume.** When the scheduler skips a day (holiday, downtime, the window passes without a chance to enqueue), the next active day's batch grows by at most 50% — never doubles. Better to extend the refresh cycle than to look like a backlog drain.
 
@@ -158,6 +160,35 @@ All three jobs are idempotent: same inputs → same DB state. Re-running a job i
 
 - HTTP 403 / Cloudflare challenge → retry with backoff up to 5 attempts, then mark the job failed and Sentry-alert. Plan 6 Task 13 already tracks the "swimming.ca starts blocking us" concern; this work inherits whatever resolution lands there (residential proxy, scraping-as-a-service swap-in, etc.). Architecturally, swapping `politeFetch()` is the only change needed.
 - Parser miss (page layout changed) → throw a typed `ParserMismatchError`; the worker fails the job, increments a Sentry tag, and a dashboard alert fires. We do not silently degrade.
+
+### 5.6 Bootstrap order
+
+The first time the system runs, both jobs need to fire once before the regular fan-out begins:
+
+1. Manual one-shot of `club-directory-crawl` (admin endpoint, ignores window). Populates ~ 1500 `Club` rows with default `crawlPriority = 0`.
+2. Run the **beta priority seed** (§5.7) — a small idempotent script that bumps `crawlPriority` for the trial clubs by name match (e.g. `name ILIKE 'Club Warriors%'`).
+3. Manual one-shot of `club-roster-crawl` for **just the priority clubs**, so the closed-beta has a usable index on day one without waiting a month.
+4. Enable the regular jittered scheduler. From here on the priority clubs are refreshed first each cycle.
+
+### 5.7 Beta priority seed (Waterloo region → Windsor Regionals)
+
+Goal: closed-beta users in the Waterloo area can search the swimmers they actually care about on day one, and the index is dense for **WOSA Regionals in Windsor (early June 2026 — exact date TBC at seed-script time from the meet schedule)** by the time those entries are finalized.
+
+Two priority tiers, applied as `crawlPriority` deltas on top of the default `0`:
+
+| Priority | crawlPriority | Clubs                                                                                                                                 | Why                                                              |
+| -------- | ------------: | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| **P1**   |          1000 | Club Warriors (Waterloo); Region of Waterloo Swim Club (ROW); Guelph Gryphon Aquatic Club¹                                            | Owner's home clubs — first beta swimmers + manual QA target      |
+| **P2**   |           500 | Other WOSA-region clubs likely at Windsor Regionals: Windsor Aquatic Club, Sarnia Rapids, London Aquatic, Cambridge Aquatic Jets, Brantford, Burlington, Oakville Aquatic, Etobicoke Pepsi, Mississauga Aquatic, North York AC | Beta users will be entering & spectating these clubs at the trial meet |
+| default  |             0 | Everyone else (national rotation)                                                                                                     | Standard refresh cadence                                          |
+
+**Geographic spread after priorities**: once P1 + P2 are caught up, the default `lastCrawledAt ASC` ordering naturally distributes geographically (clubs are interleaved across provinces in `Club.id` and creation time, and the per-day shuffle prevents same-province batches). No additional logic needed.
+
+¹ The exact SNC club name for "Guelph Gryphon" should be confirmed during seed-script runtime — the local clubs in Guelph include Guelph Marlin Aquatic Club (GMAC) and the U of Guelph–affiliated program. The seed script (next paragraph) prompts on ambiguity rather than guessing.
+
+**Resolution**: club name → `Club.id` is done at seed-script runtime via `ILIKE` matching (case-insensitive partial match) against the directory we just crawled. Ambiguous matches require manual confirmation in the script (one prompt per ambiguity); we don't trust pure fuzzy match for priority-list assignment.
+
+**Lifecycle**: priorities are persistent. After closed beta we can either decay them (e.g. P1 → 100, P2 → 50) or drop them entirely; the spec doesn't bake in a sunset because beta endpoint is itself fuzzy.
 
 ## 6. Search API
 
@@ -291,13 +322,18 @@ Add to existing `pnpm api:test` and `pnpm workers:test`. Target: maintain the ex
 
 ## 11. Rollout
 
+Anchored to the **WOSA Regionals in Windsor (early June 2026, exact date TBC)** trial target — the index needs to be dense for those clubs by the time start-list entries are finalized (typically 7–10 days before the meet). Confirm the meet date against the Swim Ontario / Windsor host-club schedule during step 3 below.
+
 1. Land schema migration + extensions (pg_trgm, unaccent) on closed-beta DB. (No-op for users.)
 2. Land parsers + jobs behind a feature flag (`INDEX_CRAWL_ENABLED`). Run `club-directory-crawl` once manually; verify ~ 1500 clubs ingested.
-3. Run `club-roster-crawl` for 5 known clubs manually; verify ~ a few hundred athletes ingested. Spot-check by searching for a known swimmer.
-4. Land `/v1/athletes/search` endpoint + tests.
-5. Ship mobile onboarding swap behind a remote-config flag; keep the manual-sncId path as fallback.
-6. Enable the jittered evening fan-out scheduler. Watch Sentry for parser breakage and 403s for one week, and verify in logs that fire times actually land inside 16:00–22:30 ET with non-uniform spacing.
-7. Flip the mobile remote-config flag for closed-beta users once Felix's name resolves correctly end-to-end.
+3. **Run the beta priority seed (§5.7)**. Confirm Club Warriors, ROW, and GMAC each got `crawlPriority = 1000` and the WOSA-region P2 list got `500`. Spot-check ambiguous matches by hand.
+4. Manually fire `club-roster-crawl` for **all P1 + P2 clubs** in one go (admin endpoint, bypasses the window). ~ 13 clubs × 1 page each ≈ < 1 minute of fetch. Index is now usable for the trial cohort.
+5. Search Felix Bechtel by name; confirm the result links to the correct `sncId`. Search a swimmer from each P2 club; confirm hits.
+6. Land `/v1/athletes/search` endpoint + tests.
+7. Ship mobile onboarding swap behind a remote-config flag; keep the manual-sncId path as fallback.
+8. Enable the jittered evening fan-out scheduler. Watch Sentry for parser breakage and 403s for one week, and verify in logs that fire times actually land inside 16:00–22:30 ET with non-uniform spacing.
+9. Flip the mobile remote-config flag for closed-beta users once Felix and one swimmer per P2 club resolve cleanly end-to-end.
+10. **Pre-Regionals freshness check** (7–10 days before the confirmed meet date): re-run `club-roster-crawl` for the WOSA P1+P2 list to catch any last-minute new registrations / club changes ahead of the meet entries.
 
 ## 12. Out-of-scope reminders
 
