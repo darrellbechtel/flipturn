@@ -1,4 +1,4 @@
-import { DateTime } from 'luxon';
+import type { DateTime } from 'luxon';
 import type { PrismaClient } from '@flipturn/db';
 import {
   CRAWL_TZ,

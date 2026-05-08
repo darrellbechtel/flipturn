@@ -5,7 +5,6 @@ import { makeUser, makeSession } from '../helpers/factories.js';
 
 let h: TestApp;
 let bearer: string;
-let userId: string;
 
 describe('GET /v1/athletes/search', () => {
   beforeAll(async () => {
@@ -21,7 +20,6 @@ describe('GET /v1/athletes/search', () => {
     await h.prisma.session.deleteMany();
     await h.prisma.user.deleteMany();
     const user = await makeUser(h.prisma, 'searcher@example.com');
-    userId = user.id;
     const { token } = await makeSession(h.prisma, user.id);
     bearer = `Bearer ${token}`;
   });

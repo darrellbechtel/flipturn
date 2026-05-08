@@ -1,4 +1,4 @@
-import { DateTime } from 'luxon';
+import type { DateTime } from 'luxon';
 
 export const CRAWL_TZ = 'America/Toronto';
 export const WINDOW_START_HOUR = 16;          // 16:00 ET inclusive

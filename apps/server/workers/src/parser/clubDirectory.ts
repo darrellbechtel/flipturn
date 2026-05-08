@@ -177,7 +177,7 @@ function uniqueId(name: string, address: string, used: Set<string>): string {
   // (name + address) tuple. The hash is deterministic so re-parsing the same
   // fixture yields the same ID.
   const suffix = shortHash(`${name}|${address}`);
-  let candidate = `${base}-${suffix}`;
+  const candidate = `${base}-${suffix}`;
   if (!used.has(candidate)) return candidate;
 
   // Extremely unlikely (would require both identical name+address AND
