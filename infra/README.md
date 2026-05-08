@@ -19,9 +19,16 @@ emails from a verified `flipturn.ca` sending domain.
 
 ## Secrets file (`~/.config/flipturn/secrets.env`)
 
-pm2 loads production env vars from this file. Create it manually on the Mac
-Mini — **never commit it.** The repo's root `.gitignore` already excludes
-`.env` and `.env.*`; this file lives outside the repo entirely.
+The API and workers each read this file into `process.env` at startup via
+`apps/server/{api,workers}/src/loadSecrets.ts`. (pm2's own `env_file`
+directive is silently ignored — that surface bit us once with empty
+`RESEND_API_KEY` in production. The path is passed through
+`env.SECRETS_ENV_FILE` in `infra/pm2/ecosystem.config.cjs` and the app
+loads it explicitly, robust regardless of launcher.)
+
+Create the file manually on the Mac Mini — **never commit it.** The
+repo's root `.gitignore` already excludes `.env` and `.env.*`; this
+file lives outside the repo entirely.
 
 Required keys:
 

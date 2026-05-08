@@ -1,3 +1,6 @@
+// MUST be the first import — populates process.env from the production
+// secrets file before getEnv() reads it. See ./loadSecrets.ts for why.
+import './loadSecrets.js';
 import { getEnv } from './env.js';
 import { getLogger } from './logger.js';
 import { initSentry } from './sentry.js';
