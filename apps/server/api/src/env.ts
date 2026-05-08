@@ -17,6 +17,17 @@ const EnvSchema = z.object({
     .pipe(z.string().min(1).optional()),
   EMAIL_FROM: z.string().default('Flip Turn <noreply@flipturn.ca>'),
   MOBILE_DEEP_LINK_BASE: z.string().default('flipturn://auth'),
+  // Universal Links (iOS) — Apple Developer Team ID, 10 chars. Combined
+  // with the bundle id `app.flipturn.mobile` it forms the AASA appID
+  // `<TEAM>.app.flipturn.mobile`. Empty -> AASA serves an empty applinks
+  // manifest (valid JSON, just no app-association declared).
+  IOS_TEAM_ID: z.string().default(''),
+  // App Links (Android) — comma-separated SHA-256 fingerprints of the
+  // signing cert(s) for the installed app. Multiple values supported so
+  // debug + release can coexist. Format per fingerprint: `AA:BB:CC:...`
+  // (uppercase hex, colon-separated). Empty -> assetlinks.json returns
+  // an empty array.
+  ANDROID_CERT_SHA256: z.string().default(''),
 });
 
 export type ApiEnv = z.infer<typeof EnvSchema>;

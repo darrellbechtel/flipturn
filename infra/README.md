@@ -386,6 +386,67 @@ cloudflared tunnel delete flipturn-prod
 # Then remove the api.flipturn.ca CNAME in the Cloudflare DNS panel.
 ```
 
+## Universal Links / App Links
+
+Magic-link emails embed `https://flipturn.ca/auth?token=...`. On a desktop
+browser, that path renders the in-browser sign-in page (Phase 1+2). On a
+phone with the Flip Turn app installed, the OS can route the same URL
+straight to the app — no browser hop — provided the Apple `applinks` /
+Android `assetlinks` manifests under `/.well-known/` declare ownership.
+
+Apple downloads `apple-app-site-association` (no extension) and Android
+fetches `assetlinks.json` from the apex via Cloudflare Tunnel. The api
+serves both at `/.well-known/`. Both endpoints always return valid JSON
+even when their respective env vars are empty (avoids OS-level 404
+caching that locks out future enabling).
+
+### Filling in the manifest values
+
+Add to `~/.config/flipturn/secrets.env`:
+
+```bash
+# iOS — 10-char Apple Developer Team ID, found at
+# https://developer.apple.com/account → Membership.
+IOS_TEAM_ID="ABC123XYZ4"
+
+# Android — comma-separated SHA-256 fingerprints (uppercase hex,
+# colon-separated). Get via:
+#   cd apps/client/mobile && npx eas-cli credentials
+#     → Android → <build profile> → Keystore → SHA-256 Fingerprint
+# Or, for `expo run:android` debug builds:
+#   keytool -list -v -keystore ~/.android/debug.keystore \
+#     -alias androiddebugkey -storepass android -keypass android \
+#     | awk '/SHA256:/ {print $2}'
+# Multiple values OK (debug + release):
+ANDROID_CERT_SHA256="AA:BB:...,CC:DD:..."
+```
+
+Then `pm2 reload infra/pm2/ecosystem.config.cjs --update-env` so the api
+picks up the values. Verify:
+
+```bash
+curl https://flipturn.ca/.well-known/apple-app-site-association | jq .
+curl https://flipturn.ca/.well-known/assetlinks.json | jq .
+```
+
+The app side is wired in `apps/client/mobile/app.json` —
+`ios.associatedDomains` and `android.intentFilters` declare the same
+domain. Universal Links / App Links only take effect on devices running a
+build produced **after** that config landed, so a fresh EAS build is
+required after enabling them.
+
+### Verifying on a device
+
+- iOS: install the new build (TestFlight / EAS internal). On first launch
+  iOS fetches AASA via Apple's CDN; this can lag by minutes. Test by
+  long-pressing the magic-link in the email and choosing "Open in Flip
+  Turn" (if the option doesn't appear, AASA didn't validate — check
+  `swcutil log` in Console.app).
+- Android: install the new APK / AAB. Run
+  `adb shell pm get-app-links app.flipturn.mobile` — `verified` against
+  `flipturn.ca` means assetlinks validated; `legacy_failure` means the
+  fingerprint didn't match. Re-check the keystore.
+
 ## Resend setup
 
 The API sends magic-link emails through Resend. The free tier is sufficient
