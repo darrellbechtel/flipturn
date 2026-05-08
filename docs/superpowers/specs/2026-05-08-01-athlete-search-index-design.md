@@ -1,0 +1,289 @@
+# Athlete Search Index — Design Spec
+
+**Date:** 2026-05-08
+**Status:** Approved (brainstorm complete; ready for implementation plan)
+**Scope:** Internal index of every Canadian competitive swimmer, with a name/club search API consumed by mobile onboarding
+**Owner:** Darrell Bechtel
+**Parent doc:** [`2026-05-04-01-flipturn-mvp-design.md`](./2026-05-04-01-flipturn-mvp-design.md)
+
+---
+
+## 1. Goal & success criterion
+
+Let a parent onboard their swimmer by **typing the swimmer's name** instead of pasting an SNC athlete ID. Today onboarding requires a 7-digit `sncId` the user almost never has memorized — the wedge collapses at step one for new users.
+
+This spec covers building an internal index of every registered Canadian swimmer (sourced from public Swimming Canada pages) and a search API that returns enough fields to disambiguate. The existing `athlete-detail-scrape` worker continues to handle full profile/PB ingestion the moment a user picks a result.
+
+**Success criterion:** A first-time user can find their swimmer in ≤ 3 attempts using only the swimmer's name (with optional club filter), without ever needing the SNC ID. Median search latency < 200 ms p95.
+
+## 2. Non-goals (deferred)
+
+- International swimmers (FINA / non-SNC). Canada-only for v1.
+- Pre-fetching swims/PBs for every indexed athlete. Onboard flow already does this on demand.
+- Public (unauthenticated) search. Requires session like every other endpoint.
+- Athlete identity-resolution / merging across data sources. The existing matcher non-goal in the parent spec still stands.
+- Unsubscribe-from-index UX. Takedown is handled via Plan 6 Task 14's privacy/takedown page (a manual delete is acceptable for v1 volume).
+- Auto-complete-as-you-type wired to the API. UI debounces and calls the same endpoint; the endpoint itself is just request/response.
+
+## 3. High-level architecture
+
+```
+                                     nightly cron
+                                          │
+                                          ▼
+┌──────────────────┐    enqueue   ┌────────────────────┐    HTTP   ┌──────────────────────┐
+│  cron scheduler  │ ───────────▶ │  BullMQ queues     │ ────────▶ │ results.swimming.ca  │
+│ apps/server/     │              │  • club-directory  │ politeFetch│  + findaclub.swim... │
+│   workers        │              │  • club-roster     │           └──────────────────────┘
+└──────────────────┘              └────────────────────┘
+                                          │
+                                          ▼ upsert
+                                  ┌────────────────────┐
+                                  │  Postgres          │
+                                  │  • Club            │
+                                  │  • Athlete (idx)   │
+                                  └────────────────────┘
+                                          ▲
+                                          │ pg_trgm fuzzy match
+┌──────────────────┐  GET /v1/athletes/search?q=...
+│ apps/client/     │ ────────────▶ ┌────────────────────┐
+│   mobile         │               │ apps/server/api    │
+│ onboarding screen│               │ (Hono)             │
+└──────────────────┘ ◀──────────── └────────────────────┘
+                       results
+```
+
+No new processes. No new infra. The crawler is two BullMQ jobs running inside the existing `apps/server/workers` process; the search endpoint is a route in the existing `apps/server/api`. Reuses `politeFetch()`, Sentry, session middleware, and Prisma — all present today.
+
+## 4. Data model (Prisma deltas)
+
+### 4.1 New: `Club`
+
+```prisma
+model Club {
+  id            String   @id              // SNC club ID, e.g. "ON-CW"
+  name          String
+  shortName     String?                   // "Club Warriors"
+  province      String?                   // "ON"
+  city          String?
+  rosterUrl     String?                   // canonical roster page
+  lastCrawledAt DateTime?
+  athletes      Athlete[]
+  memberships   ClubMembership[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([province])
+  @@index([name])
+}
+```
+
+### 4.2 Existing `Athlete` — additions
+
+```prisma
+model Athlete {
+  // ... existing fields unchanged ...
+
+  clubId         String?      // FK; nullable because athlete may exist before we've crawled their club
+  club           Club?        @relation(fields: [clubId], references: [id])
+  dobYear        Int?         // public pages expose year-only; full DOB stays in `dob` if/when we get it
+  source         AthleteSource @default(USER_ONBOARDED)
+  lastIndexedAt  DateTime?
+
+  searchVector   Unsupported("tsvector")? @default(dbgenerated("to_tsvector('simple', unaccent(coalesce(\"primaryName\", '') || ' ' || coalesce(array_to_string(\"alternateNames\", ' '), '')))")) @ignore
+
+  @@index([clubId])
+  @@index([dobYear])
+  @@index([searchVector], type: Gin)
+}
+
+enum AthleteSource {
+  USER_ONBOARDED   // came in via /v1/athletes/onboard before the index existed
+  CRAWLED          // discovered by club-roster-crawl
+}
+```
+
+`searchVector` is a Postgres generated column (`tsvector` over `unaccent(primaryName + alternateNames)`) with a GIN index — fast prefix and full-token search. We additionally use `pg_trgm` on `primaryName` for fuzzy match (handles typos like "Felx Bechtel"); this needs `CREATE EXTENSION pg_trgm` and `CREATE EXTENSION unaccent` in the migration.
+
+### 4.3 `ClubMembership` — unchanged
+
+Already in schema; gets populated by `athlete-detail-scrape` when a user actually onboards an athlete (we don't pre-fetch history during indexing).
+
+### 4.4 `sncId` collision handling
+
+`Athlete.sncId @unique` is already enforced. The crawl upsert is keyed on `sncId` — if a user-onboarded record already exists, the crawler updates `clubId`, `dobYear`, `lastIndexedAt`, and flips `source` to `CRAWLED` only if it was previously `USER_ONBOARDED` *and* the crawl found the same `primaryName` (sanity guard).
+
+## 5. Ingestion pipeline
+
+### 5.1 Three jobs, all in `apps/server/workers`
+
+| Job                    | Cadence              | Input        | Output                                | Politeness                                  |
+| ---------------------- | -------------------- | ------------ | ------------------------------------- | ------------------------------------------- |
+| `club-directory-crawl` | weekly (Sun 03:00)   | none         | upserts `Club` rows                   | 1 req/sec, retry w/ backoff                 |
+| `club-roster-crawl`    | nightly, fanned-out  | `clubId`     | upserts `Athlete` rows for that club  | 1 req/sec per worker, exponential on 403    |
+| `athlete-detail-scrape`| on demand (existing) | `sncId`      | swims + PBs (unchanged)               | unchanged                                   |
+
+### 5.2 Fan-out strategy
+
+Nightly the scheduler enqueues `club-roster-crawl` for ⌈totalClubs/30⌉ clubs (oldest `lastCrawledAt` first), so each club refreshes ~ once per month without bursting. ~ 1500 Canadian clubs ÷ 30 ≈ 50 jobs/night × ~1 page/club × 1 req/sec ≈ ~1 minute of fetch time per night, well under any reasonable politeness threshold.
+
+### 5.3 Source pages & parsers
+
+Two new HTML parsers in `apps/server/workers/src/parsers/` mirroring the existing `parseAthletePage()`:
+
+- `parseClubDirectory(html)` — input: `https://findaclub.swimming.ca/`. Output: `{ id, name, province, city, rosterUrl }[]`.
+- `parseClubRoster(html)` — input: each club's roster page on `results.swimming.ca`. Output: `{ sncId, primaryName, alternateNames, dobYear, gender, clubId }[]`.
+
+Both reuse the existing `politeFetch()` wrapper. Parsing is pure (testable with HTML fixtures); fetch is injected for testing.
+
+### 5.4 Idempotency
+
+All three jobs are idempotent: same inputs → same DB state. Re-running a job is safe and has no side effects beyond updating `lastCrawledAt` / `lastIndexedAt`. Required for the BullMQ retry semantics already in place.
+
+### 5.5 Failure handling
+
+- HTTP 403 / Cloudflare challenge → retry with backoff up to 5 attempts, then mark the job failed and Sentry-alert. Plan 6 Task 13 already tracks the "swimming.ca starts blocking us" concern; this work inherits whatever resolution lands there (residential proxy, scraping-as-a-service swap-in, etc.). Architecturally, swapping `politeFetch()` is the only change needed.
+- Parser miss (page layout changed) → throw a typed `ParserMismatchError`; the worker fails the job, increments a Sentry tag, and a dashboard alert fires. We do not silently degrade.
+
+## 6. Search API
+
+### 6.1 Endpoint
+
+```
+GET /v1/athletes/search
+  ?q=<string>            # required, ≥ 2 chars after trim
+  &clubId=<string>       # optional, exact
+  &province=<2-char>     # optional, exact (uppercase)
+  &limit=<int>           # optional, default 20, max 50
+
+Auth:    session middleware (existing)
+Rate:    50 req/min per session (Redis token bucket; reuses existing limiter)
+```
+
+### 6.2 Response
+
+```ts
+type AthleteSearchResult = {
+  sncId: string;
+  displayName: string;          // primaryName
+  alternateNames: string[];
+  dobYear: number | null;
+  gender: 'M' | 'F' | 'X' | null;
+  club: { id: string; name: string; province: string | null } | null;
+  hasFlipturnProfile: boolean;  // true if a Flipturn user has already onboarded this athlete
+  alreadyLinkedToMe: boolean;   // true if the *current* user has this athlete linked
+};
+
+type Response = { results: AthleteSearchResult[]; total: number };
+```
+
+### 6.3 Ranking
+
+1. Exact `primaryName` match (case-insensitive, unaccented)
+2. `tsvector @@ tsquery` rank from `searchVector`
+3. `similarity(primaryName, q)` from `pg_trgm` (threshold 0.3)
+4. Tiebreak: `clubId == filter.clubId` first, then alphabetical
+
+`alreadyLinkedToMe` lets the mobile UI grey-out duplicates without a second round-trip.
+
+### 6.4 Implementation note
+
+Single Postgres query using `to_tsquery(simple, unaccent($1))` + `pg_trgm` similarity, joined to `Club`, plus a `LEFT JOIN UserAthlete ON athlete_id = $userId`. ~ 30 lines of raw SQL via `Prisma.$queryRaw` (Prisma's ORM-level FTS support is too limited for this combo). Lives in `apps/server/api/src/services/athleteSearch.ts`.
+
+## 7. Onboarding UX change
+
+### 7.1 API
+
+`POST /v1/athletes/onboard` already accepts `{ sncId }`. **No change.** The mobile screen now obtains the `sncId` via search instead of asking the user to type it.
+
+A power-user path remains: a "Have an SNC ID?" link reveals the manual-entry field for users who already know it (e.g., parents migrating data).
+
+### 7.2 Mobile flow
+
+```
+[Onboard a swimmer]
+┌───────────────────────────────────────┐
+│ Swimmer name: [ Felix Bechtel______ ] │
+│ Club (optional): [ Club Warriors ▼ ]  │
+│                                       │
+│ ┌───────────────────────────────────┐ │
+│ │ Felix Bechtel  · Club Warriors    │ │ ← tap → POST /onboard
+│ │ b.2014 · ON                       │ │
+│ ├───────────────────────────────────┤ │
+│ │ Felix Bechtel  · Etobicoke Pep    │ │   (if multiple)
+│ │ b.2010 · ON                       │ │
+│ └───────────────────────────────────┘ │
+│                                       │
+│ [ Have an SNC ID? Enter manually ]    │
+└───────────────────────────────────────┘
+```
+
+Debounce 250 ms. On tap, send `sncId` to existing `/v1/athletes/onboard`, which enqueues the existing `athlete-detail-scrape` job. No mobile state machine changes beyond the search field.
+
+## 8. Operational concerns
+
+### 8.1 Legal / takedown
+
+Swimming Canada publishes meet results and club rosters publicly. We mirror only data they already publish, link back to source URLs in the athlete profile (already happens via the existing scraper), and add `/legal/takedown` (covered by Plan 6 Task 14 — extending its scope to this dataset is a one-paragraph addition).
+
+`robots.txt` for `results.swimming.ca` and `findaclub.swimming.ca` is checked at parser-test time; if they ever disallow our paths, the crawler refuses to enqueue.
+
+### 8.2 Crawl budget
+
+- `club-directory-crawl`: 1 page/week.
+- `club-roster-crawl`: ~ 50 pages/night.
+- `athlete-detail-scrape`: unchanged (per-onboard, plus existing periodic refresh).
+
+Total new outbound traffic: trivial.
+
+### 8.3 Storage
+
+- `Club`: ~ 1500 rows × ~ 200 B ≈ 300 KB.
+- `Athlete` index rows: ~ 100k rows × ~ 500 B ≈ 50 MB.
+- `tsvector` GIN index: ~ 20 MB.
+- `pg_trgm` GIN index on `primaryName`: ~ 10 MB.
+
+Total: ~ 100 MB. Fits the existing Mac Mini Postgres comfortably.
+
+### 8.4 Privacy posture
+
+`dobYear` only — never full DOB from indexing (the existing scraper might capture full DOB from a profile if available, that path is unchanged). `gender` is what the source publishes, stored as-is. No emails, no contact info. The index does not store anything not already public on `results.swimming.ca` and `findaclub.swimming.ca`.
+
+### 8.5 Observability
+
+- Sentry: existing wiring covers worker errors and API errors automatically.
+- Custom metric: `index.athletes.total`, `index.clubs.total`, `crawl.club_roster.duration_ms` (via Sentry tags or a simple `/v1/admin/index-stats` endpoint).
+- Dashboards: a single admin page (auth-gated) showing last crawl per club + total counts is enough for v1.
+
+## 9. Testing strategy
+
+| Test type        | Coverage                                                                                                         |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Unit (parsers)   | `parseClubDirectory` / `parseClubRoster` against checked-in HTML fixtures (golden files)                         |
+| Unit (services)  | `athleteSearch` ranking against a seeded fixture DB (~ 200 athletes, 5 clubs, deliberate name collisions)        |
+| Integration      | API: `GET /v1/athletes/search` with auth, rate-limit, pagination, empty results, fuzzy hit                       |
+| Integration      | Worker: `club-roster-crawl` end-to-end against a fake `politeFetch` returning fixture HTML, asserting upserts    |
+| E2E (manual)     | Onboarding from mobile dev build: search → pick → see profile populated within 60s                               |
+
+Add to existing `pnpm api:test` and `pnpm workers:test`. Target: maintain the existing 143+ test count + ~ 25 new tests.
+
+## 10. Open questions / decisions deferred
+
+- **Sub-second autocomplete**: not a goal for v1. If onboarding adoption shows users typing fast, we can add a `/v1/athletes/search/suggest` lightweight endpoint later.
+- **Swimrankings.net cross-link**: nice-to-have for international comparisons; out of scope per §2.
+- **Index seeding shortcut**: we could speed up the initial bulk crawl by parallelizing; deferred until we know whether 30 days of nightly fan-out is fast enough for v1.
+- **Multi-region clubs**: a few clubs operate in multiple provinces. The model treats `province` as singular on `Club`. Acceptable trade-off; revisit only if a user reports it.
+
+## 11. Rollout
+
+1. Land schema migration + extensions (pg_trgm, unaccent) on closed-beta DB. (No-op for users.)
+2. Land parsers + jobs behind a feature flag (`INDEX_CRAWL_ENABLED`). Run `club-directory-crawl` once manually; verify ~ 1500 clubs ingested.
+3. Run `club-roster-crawl` for 5 known clubs manually; verify ~ a few hundred athletes ingested. Spot-check by searching for a known swimmer.
+4. Land `/v1/athletes/search` endpoint + tests.
+5. Ship mobile onboarding swap behind a remote-config flag; keep the manual-sncId path as fallback.
+6. Enable nightly fan-out cron. Watch Sentry for parser breakage and 403s for one week.
+7. Flip the mobile remote-config flag for closed-beta users once Felix's name resolves correctly end-to-end.
+
+## 12. Out-of-scope reminders
+
+This spec deliberately does not solve identity resolution across multiple sources, time-standard tracking, or push notifications. Each gets its own brainstorm and design spec when its time comes — same as the parent MVP design.
