@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  LaunchAgent template for the auto-deploy timer. The README's
+  "Auto-deploy on merge" section installs it via:
+
+    sed "s|__HOME__|$HOME|g" infra/deploy/com.flipturn.deploy.plist.template \
+      > ~/Library/LaunchAgents/com.flipturn.deploy.plist
+    launchctl load ~/Library/LaunchAgents/com.flipturn.deploy.plist
+
+  StartInterval = 120s. Tune by editing the loaded plist + reloading.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.flipturn.deploy</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__HOME__/code/flipturn/infra/deploy/auto-deploy.sh</string>
+  </array>
+
+  <key>StartInterval</key>
+  <integer>120</integer>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <!-- launchd captures any stdout/stderr that escapes the script's own
+       redirects (e.g. early `set -e` failures, exec errors). -->
+  <key>StandardOutPath</key>
+  <string>__HOME__/.flipturn-deploy.stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>__HOME__/.flipturn-deploy.stderr.log</string>
+</dict>
+</plist>
