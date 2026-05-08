@@ -160,6 +160,47 @@ describe('POST /v1/auth/magic-link/consume', () => {
   });
 });
 
+describe('GET /v1/auth/magic-link/consume (browser fallback page)', () => {
+  beforeAll(async () => {
+    h = await createTestApp();
+  });
+  afterAll(async () => {
+    await h.teardown();
+  });
+
+  it('serves an HTML page that does not auto-consume the token', async () => {
+    // First, mint a real magic-link token so we can prove the GET didn't burn it.
+    await h.app.request('/v1/auth/magic-link/request', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'browser@example.com' }),
+    });
+    const sent = h.email.latestTo('browser@example.com');
+    // textBody contains a "<base>?token=<hex>" URL; pluck the hex regardless
+    // of scheme (test envs use flipturn://, prod uses https://).
+    const token = sent!.textBody.match(/[?&]token=([a-f0-9]+)/)![1];
+
+    const getRes = await h.app.request(`/v1/auth/magic-link/consume?token=${token}`);
+    expect(getRes.status).toBe(200);
+    expect(getRes.headers.get('content-type') ?? '').toMatch(/text\/html/);
+    const html = await getRes.text();
+    // Sanity: page is HTML and POSTs to the consume endpoint
+    expect(html).toMatch(/<!doctype html>/i);
+    expect(html).toContain('/v1/auth/magic-link/consume');
+
+    // Critically: the GET MUST NOT have consumed the token. POSTing it now
+    // should still succeed.
+    const postRes = await h.app.request('/v1/auth/magic-link/consume', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    expect(postRes.status).toBe(200);
+    const body = (await postRes.json()) as { sessionToken: string };
+    expect(body.sessionToken).toMatch(/^[a-f0-9]+$/);
+  });
+});
+
 describe('GET /v1/auth/me', () => {
   beforeAll(async () => {
     h = await createTestApp();
