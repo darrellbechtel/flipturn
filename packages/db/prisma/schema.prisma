@@ -52,9 +52,11 @@ model Athlete {
   primaryName    String
   alternateNames String[]
   dob            DateTime?
+  // Year-only DOB. Populated by crawl when only year is exposed publicly; falls back to YEAR(dob) when full dob is known.
   dobYear        Int?
   gender         Gender?
   homeClub       String?
+  // FK to Club (new). The legacy free-text 'homeClub' field is kept for back-compat until all athletes are reconciled to Club rows.
   clubId         String?
   club           Club?            @relation(fields: [clubId], references: [id])
   source         AthleteSource    @default(USER_ONBOARDED)
