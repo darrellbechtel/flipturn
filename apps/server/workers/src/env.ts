@@ -16,6 +16,8 @@ const EnvSchema = z.object({
   SCRAPE_USER_AGENT: z
     .string()
     .default('FlipTurnBot/0.1 (+https://flipturn.ca/bot; contact@flipturn.ca)'),
+  // Set below 4800ms to let politeness.ts sample the inter-request delay
+  // (1500–4000ms + 0–800ms read pause). At 5000ms+ the fixed floor dominates and sampling is masked.
   SCRAPE_RATE_LIMIT_MS: z.coerce.number().int().positive().default(5000),
   SCRAPE_DAILY_HOST_BUDGET: z.coerce.number().int().positive().default(500),
   // Path under repo root for raw artifact archive.

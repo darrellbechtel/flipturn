@@ -52,8 +52,15 @@ model Athlete {
   primaryName    String
   alternateNames String[]
   dob            DateTime?
+  // Year-only DOB. Populated by crawl when only year is exposed publicly; falls back to YEAR(dob) when full dob is known.
+  dobYear        Int?
   gender         Gender?
   homeClub       String?
+  // FK to Club (new). The legacy free-text 'homeClub' field is kept for back-compat until all athletes are reconciled to Club rows.
+  clubId         String?
+  club           Club?            @relation(fields: [clubId], references: [id])
+  source         AthleteSource    @default(USER_ONBOARDED)
+  lastIndexedAt  DateTime?
   clubHistory    ClubMembership[]
   swims          Swim[]
   personalBests  PersonalBest[]
@@ -61,6 +68,31 @@ model Athlete {
   lastScrapedAt  DateTime?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
+
+  @@index([clubId])
+  @@index([dobYear])
+}
+
+enum AthleteSource {
+  USER_ONBOARDED
+  CRAWLED
+  REMOTE_DISCOVERY
+}
+
+model Club {
+  id            String    @id // SNC club code (e.g. "ON-CW")
+  name          String
+  shortName     String?
+  province      String? // 2-letter (e.g. "ON")
+  city          String?
+  rosterUrl     String?
+  lastCrawledAt DateTime?
+  athletes      Athlete[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([province])
+  @@index([name])
 }
 
 model UserAthlete {
