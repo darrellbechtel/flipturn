@@ -24,9 +24,11 @@ const path = require('path');
 // Resolve to the repo root from `infra/pm2/`.
 const repoRoot = path.resolve(__dirname, '../..');
 
-// `env_file` paths assume the deploying user has a populated
-// `~/.config/flipturn/secrets.env` file (see `infra/README.md`).
-// Using `process.env.HOME` keeps this portable across operators.
+// Path to the deploying user's secrets file (see `infra/README.md`).
+// Read by `apps/server/{api,workers}/src/loadSecrets.ts` at process
+// start — pm2's own `env_file` directive is silently ignored, so we
+// surface the path through `env.SECRETS_ENV_FILE` and let the app
+// load it explicitly. Using `process.env.HOME` keeps this portable.
 const secretsEnvFile = `${process.env.HOME}/.config/flipturn/secrets.env`;
 
 // Path to the cloudflared tunnel config (this repo ships a template at
@@ -50,9 +52,10 @@ module.exports = {
       interpreter: tsxBinary(apiAppDir),
       env: {
         NODE_ENV: 'production',
-        // Real values come from the secrets file loaded via `env_file`.
+        // src/loadSecrets.ts reads SECRETS_ENV_FILE at startup and
+        // populates process.env from it before zod parses the schema.
+        SECRETS_ENV_FILE: secretsEnvFile,
       },
-      env_file: secretsEnvFile,
       autorestart: true,
       max_memory_restart: '512M',
       time: true,
@@ -64,8 +67,8 @@ module.exports = {
       interpreter: tsxBinary(workersAppDir),
       env: {
         NODE_ENV: 'production',
+        SECRETS_ENV_FILE: secretsEnvFile,
       },
-      env_file: secretsEnvFile,
       autorestart: true,
       max_memory_restart: '512M',
       time: true,
