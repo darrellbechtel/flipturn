@@ -16,7 +16,10 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.flipturn.mobile",
-      "associatedDomains": ["applinks:flipturn.ca"]
+      "associatedDomains": ["applinks:flipturn.ca"],
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -45,8 +48,10 @@
     },
     "extra": {
       "eas": {
-        "projectId": "TBD-set-during-eas-init"
-      }
-    }
+        "projectId": "f95447fd-788c-477d-aa1c-aa8083e69d1e"
+      },
+      "router": {}
+    },
+    "owner": "darrell.bechtel"
   }
 }
