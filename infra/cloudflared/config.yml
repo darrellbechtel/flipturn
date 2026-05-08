@@ -19,5 +19,12 @@ ingress:
   - hostname: api.flipturn.ca
     service: http://localhost:3000
 
+  # Apex `flipturn.ca` is the user-facing surface (magic-link landing
+  # page at `/auth`, future Universal Links AASA at
+  # `/.well-known/apple-app-site-association`, etc.). It routes to the
+  # same Hono process; the api inspects the path, not the Host header.
+  - hostname: flipturn.ca
+    service: http://localhost:3000
+
   # Catch-all (required by cloudflared)
   - service: http_status:404

@@ -148,17 +148,33 @@ below.
    # one-time login (skip if ~/.cloudflared/cert.pem already exists)
    cloudflared tunnel login
 
-   # route DNS (creates a CNAME api.flipturn.ca -> <UUID>.cfargotunnel.com)
+   # route DNS for both hostnames (creates CNAMEs ->  <UUID>.cfargotunnel.com)
    cloudflared tunnel route dns flipturn-prod api.flipturn.ca
+   cloudflared tunnel route dns flipturn-prod flipturn.ca
 
    # drop the config in place
    mkdir -p ~/.config/cloudflared
    cp infra/cloudflared/config.yml ~/.config/cloudflared/config.yml
    ```
 
+   The config has two ingress rules: `api.flipturn.ca` is the API surface,
+   and apex `flipturn.ca` is the user-facing surface (magic-link landing
+   at `/auth`, future Universal Links AASA). Both route to the same Hono
+   process on `localhost:3000` — the api dispatches by path, not Host
+   header.
+
    If the tunnel ever has to be re-created (e.g. credentials lost), update
    `infra/cloudflared/config.yml` with the new UUID and credentials path
    and land that as a separate PR.
+
+   **When `infra/cloudflared/config.yml` changes** (e.g. a new ingress
+   added in this PR), the auto-deploy timer does **not** copy it into
+   `~/.config/cloudflared/`. Sync manually + reload the tunnel:
+
+   ```bash
+   cp infra/cloudflared/config.yml ~/.config/cloudflared/config.yml
+   pm2 reload flipturn-tunnel
+   ```
 
 9. **Start the pm2 stack:**
 
