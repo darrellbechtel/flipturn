@@ -32,3 +32,45 @@ jobs:
       - run: pnpm lint
 
       - run: pnpm format:check
+
+  test:
+    name: tests (vitest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # The api/workers test helpers shell out to `docker exec
+      # flipturn-postgres ...` against the container brought up by the compose
+      # step below; these URLs match `compose.dev.yaml`'s host port mappings.
+      # They're also used by `prisma generate` during `pnpm install`.
+      DATABASE_URL: postgresql://flipturn:flipturn_dev@localhost:55432/flipturn?schema=public
+      REDIS_URL: redis://localhost:56379
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Bring up Postgres + Redis
+        run: docker compose -f compose.dev.yaml up -d --wait
+
+      # The vitest setup files in api / workers load repo-root `.env` to
+      # override vitest's injected `BASE_URL=/` and to provide empty
+      # `SENTRY_DSN` / `RESEND_API_KEY` (the api schema requires non-undefined
+      # strings). `.env.example` already has the right shape — `.env` is in
+      # `.gitignore`, so we drop it in place per-run.
+      - name: Seed .env from .env.example
+        run: cp .env.example .env
+
+      - run: pnpm test
+
+      - name: Compose logs on failure
+        if: failure()
+        run: docker compose -f compose.dev.yaml logs --no-color
