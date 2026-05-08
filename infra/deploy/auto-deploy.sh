@@ -43,6 +43,7 @@ LOCAL=$(git rev-parse HEAD)
 REMOTE=$(git rev-parse origin/main)
 
 if [ "$LOCAL" = "$REMOTE" ]; then
+  log "tick: HEAD=${LOCAL:0:7} (no diff)"
   exit 0
 fi
 
