@@ -168,6 +168,8 @@ What gets parents to download. Everyone wants to know "is my kid getting faster?
 - **Time standard tracking** — visual progress bars toward AAA, AAAA, Provincial, National, and Olympic Trials cuts. "Sarah needs to drop 1.4 seconds on her 100 free to qualify for Easterns."
 - **Multi-meet split analysis** — how is the kid's race construction changing over time? First-50 vs second-50 splits trending. Genuinely missing from existing tools.
 - **Percentile + ranking** — where does my kid rank in their age group provincially / nationally / for their birth year cohort.
+- **DQ code translation** — when a swim is disqualified, surface the FINA/SNC code in plain English (e.g. `12.5` → "False start"; `5.3` → "Missed touch on stroke turn"). Information that's available nowhere else for parents; coaches don't always volunteer it; the raw code is already in the data.
+- **Shareable PB image cards** — auto-generated card (kid's name, club, time, drop %, time-standard hit) sized for family group chats and Instagram stories. The dopamine moment becomes social currency; doubles as the primary organic-acquisition loop, which is otherwise absent from the brief.
 
 ### Tier 2 — Meet day parent experience (the differentiator)
 
@@ -308,6 +310,8 @@ Tier 1 only. Hard scope:
 - Time standard tracking against Canadian provincial + national standards
 - Push notifications: "New PB on 100 free!" (Tier 4 latency, accuracy over speed)
 - Multi-meet split analysis
+- DQ code translation on disqualified swims
+- Shareable PB image cards (organic acquisition loop)
 - Free tier with paywall on advanced analytics (TBD which)
 
 **v1 success criterion:** 50 paying parents at CA$8/month within 6 months of launch. If we can't reach that, the wedge is wrong, not the execution.
