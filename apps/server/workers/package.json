@@ -7,7 +7,10 @@
   "exports": {
     ".": "./src/index.ts",
     "./queue": "./src/queue.ts",
+    "./fetch": "./src/fetch.ts",
     "./parser/athletePage": "./src/parser/athletePage.ts",
+    "./parser/searchResults": "./src/parser/searchResults.ts",
+    "./jobs/priorityWarmer": "./src/jobs/priorityWarmer.ts",
     "./reconcile": "./src/reconcile.ts",
     "./personalBest": "./src/personalBest.ts"
   },
