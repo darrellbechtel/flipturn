@@ -28,7 +28,7 @@ This spec covers building an internal index of every registered Canadian swimmer
 ## 3. High-level architecture
 
 ```
-                                     nightly cron
+                                  evening cron (jittered)
                                           │
                                           ▼
 ┌──────────────────┐    enqueue   ┌────────────────────┐    HTTP   ┌──────────────────────┐
@@ -117,15 +117,29 @@ Already in schema; gets populated by `athlete-detail-scrape` when a user actuall
 
 ### 5.1 Three jobs, all in `apps/server/workers`
 
-| Job                    | Cadence              | Input        | Output                                | Politeness                                  |
-| ---------------------- | -------------------- | ------------ | ------------------------------------- | ------------------------------------------- |
-| `club-directory-crawl` | weekly (Sun 03:00)   | none         | upserts `Club` rows                   | 1 req/sec, retry w/ backoff                 |
-| `club-roster-crawl`    | nightly, fanned-out  | `clubId`     | upserts `Athlete` rows for that club  | 1 req/sec per worker, exponential on 403    |
-| `athlete-detail-scrape`| on demand (existing) | `sncId`      | swims + PBs (unchanged)               | unchanged                                   |
+| Job                    | Cadence (see §5.2)                                       | Input        | Output                                | Politeness                                                        |
+| ---------------------- | -------------------------------------------------------- | ------------ | ------------------------------------- | ----------------------------------------------------------------- |
+| `club-directory-crawl` | weekly, random weekday Mon–Fri, evening window (ET)      | none         | upserts `Club` rows                   | 1.5–4 s between fetches (uniform random), retry w/ backoff        |
+| `club-roster-crawl`    | per-day fan-out, randomized evening fire times (ET)      | `clubId`     | upserts `Athlete` rows for that club  | 1.5–4 s between fetches, exponential backoff on 403 / 5xx         |
+| `athlete-detail-scrape`| on demand (existing)                                     | `sncId`      | swims + PBs (unchanged)               | unchanged                                                         |
 
-### 5.2 Fan-out strategy
+### 5.2 Scheduling policy: look like a swim parent, not a bot
 
-Nightly the scheduler enqueues `club-roster-crawl` for ⌈totalClubs/30⌉ clubs (oldest `lastCrawledAt` first), so each club refreshes ~ once per month without bursting. ~ 1500 Canadian clubs ÷ 30 ≈ 50 jobs/night × ~1 page/club × 1 req/sec ≈ ~1 minute of fetch time per night, well under any reasonable politeness threshold.
+A weekday crawl that fires at 03:00 with metronomic 1-req/sec spacing is a textbook bot signature. We instead schedule everything inside the hours when a real swim parent would naturally be checking results, and we add jitter at three layers so two consecutive runs never look identical.
+
+**Active window.** All scheduled crawl jobs fire only between **16:00 and 22:30 America/Toronto**. This is when parents legitimately browse `results.swimming.ca` after school pickup / dinner. Outside that window the scheduler refuses to enqueue (manual ad-hoc runs from an admin endpoint can ignore the window).
+
+**Three layers of jitter:**
+
+1. **Day-of-week jitter** — `club-directory-crawl` picks a weekday Mon–Fri uniformly at random each week (no Sun 03:00 stamp). Skipped if the chosen weekday is a Canadian statutory holiday (cheap lookup table; the dataset doesn't change on holidays anyway).
+2. **Time-of-day jitter** — each scheduled run draws its fire time from a triangular distribution peaked at **19:30 ET** with the 16:00–22:30 window as the support. Recomputed every day; never enqueued more than 24 h in advance.
+3. **Per-request jitter** — `politeFetch()` already serializes; we change its inter-request delay from a fixed 1 s to **uniform random 1500–4000 ms**, with an additional 0–800 ms "read pause" injected on roughly 1 in 5 requests (mimics a human pausing on a result). Plus an existing exponential backoff on 403/429/5xx.
+
+**Fan-out strategy.** Each crawl day the scheduler picks ⌈ totalClubs / 30 ⌉ clubs ordered by oldest `lastCrawledAt` first, then **shuffles** that batch and assigns each club a per-job delay drawn from a uniform distribution across the day's active window. Result: ~1500 Canadian clubs ÷ 30 ≈ 50 club roster fetches per active day, spread organically across ~6.5 hours, ~ 1 fetch every 8 minutes — well below any rate that would look automated, and the full dataset still cycles roughly monthly.
+
+**No spike on resume.** When the scheduler skips a day (holiday, downtime, the window passes without a chance to enqueue), the next active day's batch grows by at most 50% — never doubles. Better to extend the refresh cycle than to look like a backlog drain.
+
+**No User-Agent rotation.** We send a static, identifiable User-Agent that names Flipturn and a contact URL. Goal is not to evade detection; it is to not trip naive heuristics while remaining transparent about who we are. If Swimming Canada's ops ever asks, we want them to find us first.
 
 ### 5.3 Source pages & parsers
 
@@ -231,7 +245,7 @@ Swimming Canada publishes meet results and club rosters publicly. We mirror only
 ### 8.2 Crawl budget
 
 - `club-directory-crawl`: 1 page/week.
-- `club-roster-crawl`: ~ 50 pages/night.
+- `club-roster-crawl`: ~ 50 pages/active day, spread across the 16:00–22:30 ET window.
 - `athlete-detail-scrape`: unchanged (per-onboard, plus existing periodic refresh).
 
 Total new outbound traffic: trivial.
@@ -261,6 +275,7 @@ Total: ~ 100 MB. Fits the existing Mac Mini Postgres comfortably.
 | ---------------- | ---------------------------------------------------------------------------------------------------------------- |
 | Unit (parsers)   | `parseClubDirectory` / `parseClubRoster` against checked-in HTML fixtures (golden files)                         |
 | Unit (services)  | `athleteSearch` ranking against a seeded fixture DB (~ 200 athletes, 5 clubs, deliberate name collisions)        |
+| Unit (scheduler) | Jitter functions: 1000 sampled fire times all land in 16:00–22:30 ET; weekday picker rejects holidays and Sat/Sun; consecutive runs differ; per-request delay distribution mean is 2.5–3.0 s with a non-zero stdev |
 | Integration      | API: `GET /v1/athletes/search` with auth, rate-limit, pagination, empty results, fuzzy hit                       |
 | Integration      | Worker: `club-roster-crawl` end-to-end against a fake `politeFetch` returning fixture HTML, asserting upserts    |
 | E2E (manual)     | Onboarding from mobile dev build: search → pick → see profile populated within 60s                               |
@@ -271,7 +286,7 @@ Add to existing `pnpm api:test` and `pnpm workers:test`. Target: maintain the ex
 
 - **Sub-second autocomplete**: not a goal for v1. If onboarding adoption shows users typing fast, we can add a `/v1/athletes/search/suggest` lightweight endpoint later.
 - **Swimrankings.net cross-link**: nice-to-have for international comparisons; out of scope per §2.
-- **Index seeding shortcut**: we could speed up the initial bulk crawl by parallelizing; deferred until we know whether 30 days of nightly fan-out is fast enough for v1.
+- **Index seeding shortcut**: we could speed up the initial bulk crawl by parallelizing; deferred until we know whether ~ 30 days of jittered evening fan-out is fast enough for v1.
 - **Multi-region clubs**: a few clubs operate in multiple provinces. The model treats `province` as singular on `Club`. Acceptable trade-off; revisit only if a user reports it.
 
 ## 11. Rollout
@@ -281,7 +296,7 @@ Add to existing `pnpm api:test` and `pnpm workers:test`. Target: maintain the ex
 3. Run `club-roster-crawl` for 5 known clubs manually; verify ~ a few hundred athletes ingested. Spot-check by searching for a known swimmer.
 4. Land `/v1/athletes/search` endpoint + tests.
 5. Ship mobile onboarding swap behind a remote-config flag; keep the manual-sncId path as fallback.
-6. Enable nightly fan-out cron. Watch Sentry for parser breakage and 403s for one week.
+6. Enable the jittered evening fan-out scheduler. Watch Sentry for parser breakage and 403s for one week, and verify in logs that fire times actually land inside 16:00–22:30 ET with non-uniform spacing.
 7. Flip the mobile remote-config flag for closed-beta users once Felix's name resolves correctly end-to-end.
 
 ## 12. Out-of-scope reminders
