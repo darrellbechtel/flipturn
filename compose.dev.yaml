@@ -6,6 +6,9 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: flipturn-postgres
+    # Resume on Docker daemon start (e.g. when OrbStack auto-starts at login)
+    # so the Mac Mini deploy doesn't need a manual `compose up` after reboot.
+    restart: unless-stopped
     environment:
       POSTGRES_USER: flipturn
       POSTGRES_PASSWORD: flipturn_dev
@@ -25,6 +28,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: flipturn-redis
+    restart: unless-stopped
     ports:
       # Mapped to 56379 to avoid colliding with a host-installed Redis.
       - '56379:6379'

@@ -107,6 +107,16 @@ below.
    pnpm dev:up
    ```
 
+   Make sure the Docker daemon auto-starts at login so the stack survives
+   reboots without manual intervention. With OrbStack:
+
+   ```bash
+   orb config set app.start_at_login true
+   ```
+
+   The compose services use `restart: unless-stopped`, so once the daemon
+   is up, Postgres + Redis come back without needing `pnpm dev:up`.
+
 6. **Run migrations and (optionally) seed the Cochrane fixture for smoke testing:**
 
    ```bash
