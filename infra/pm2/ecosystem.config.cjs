@@ -34,13 +34,20 @@ const secretsEnvFile = `${process.env.HOME}/.config/flipturn/secrets.env`;
 // `~/.config/cloudflared/config.yml` after substituting the tunnel UUID).
 const cloudflaredConfig = `${process.env.HOME}/.config/cloudflared/config.yml`;
 
+// Invoke tsx directly so pm2 supervises the actual server process. With
+// `pnpm <script>` pm2 watches the pnpm shim — when tsx dies pm2 sees pnpm
+// still alive and falsely reports "online", masking real outages.
+const apiAppDir = path.join(repoRoot, 'apps/server/api');
+const workersAppDir = path.join(repoRoot, 'apps/server/workers');
+const tsxBinary = (appDir) => path.join(appDir, 'node_modules/.bin/tsx');
+
 module.exports = {
   apps: [
     {
       name: 'flipturn-api',
-      cwd: repoRoot,
-      script: 'pnpm',
-      args: 'api:start',
+      cwd: apiAppDir,
+      script: 'src/index.ts',
+      interpreter: tsxBinary(apiAppDir),
       env: {
         NODE_ENV: 'production',
         // Real values come from the secrets file loaded via `env_file`.
@@ -52,9 +59,9 @@ module.exports = {
     },
     {
       name: 'flipturn-workers',
-      cwd: repoRoot,
-      script: 'pnpm',
-      args: 'workers:start',
+      cwd: workersAppDir,
+      script: 'src/index.ts',
+      interpreter: tsxBinary(workersAppDir),
       env: {
         NODE_ENV: 'production',
       },
