@@ -7,6 +7,7 @@ import { authRoutes } from './routes/auth.js';
 import { athletesRoutes, userAthletesRoutes } from './routes/athletes.js';
 import { dataRoutes } from './routes/data.js';
 import { healthRoute, meRoutes } from './routes/ops.js';
+import { wellKnownRoutes } from './routes/well-known.js';
 
 export interface AppDeps {
   readonly prisma: PrismaClient;
@@ -26,6 +27,17 @@ export interface AppDeps {
    * collide in the shared 'unknown' bucket.
    */
   readonly rateLimitIdentify?: ((c: Context) => string) | undefined;
+  /**
+   * Apple Developer Team ID, threaded into apple-app-site-association.
+   * When unset, /.well-known/apple-app-site-association returns 404.
+   */
+  readonly iosAppTeamId?: string | undefined;
+  /**
+   * Android signing-cert SHA-256 fingerprint (from EAS build output),
+   * threaded into assetlinks.json. When unset, /.well-known/assetlinks.json
+   * returns 404.
+   */
+  readonly androidAppSha256?: string | undefined;
 }
 
 export function createApp(deps: AppDeps): Hono {
@@ -38,6 +50,13 @@ export function createApp(deps: AppDeps): Hono {
   app.route('/v1/user-athletes', userAthletesRoutes(deps));
   app.route('/v1/health', healthRoute(deps));
   app.route('/v1/me', meRoutes(deps));
+  app.route(
+    '/.well-known',
+    wellKnownRoutes({
+      iosAppTeamId: deps.iosAppTeamId,
+      androidAppSha256: deps.androidAppSha256,
+    }),
+  );
 
   return app;
 }

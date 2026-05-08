@@ -31,6 +31,8 @@ async function main() {
     enqueueScrape: async (job) => enqueueScrapeAthlete(job),
     baseUrl: env.BASE_URL,
     mobileDeepLinkBase: env.MOBILE_DEEP_LINK_BASE,
+    iosAppTeamId: env.IOS_APP_TEAM_ID,
+    androidAppSha256: env.ANDROID_APP_SHA256,
   });
 
   const server = serve({
