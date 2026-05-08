@@ -288,13 +288,24 @@ to ship.
 
 The deploy script (`infra/deploy/auto-deploy.sh`) runs:
 
-1. `git fetch` + bail out if `HEAD == origin/main`
+1. `git fetch` and read `origin/main`
 2. Refuse if the working tree is dirty (defends against ad-hoc edits)
-3. `git pull --ff-only`, `pnpm install --frozen-lockfile`,
-   `prisma migrate deploy`, `pm2 reload <ecosystem.config.cjs> --update-env`
+3. Compare against `~/.flipturn-deployed-sha` (the SHA pm2 was last reloaded
+   at — written by this script after every successful run). If it matches
+   `origin/main`, log a heartbeat and exit.
+4. Otherwise: `git checkout main`, `git merge --ff-only origin/main`,
+   `pnpm install --frozen-lockfile`, `prisma migrate deploy`,
+   `pm2 reload <ecosystem.config.cjs> --update-env`, then write the new SHA
+   to `~/.flipturn-deployed-sha`.
 
 A `mkdir`-based lockfile prevents concurrent runs. All output streams to
 `~/.flipturn-deploy.log`.
+
+The deployed-sha file (rather than local `HEAD`) is the truth source so
+that merging from this same box doesn't silently break auto-deploy: `gh pr
+merge` fast-forwards local main automatically, which would otherwise leave
+`HEAD == origin/main` immediately and the script convinced there's nothing
+to do — even though pm2 is still on the previous code.
 
 ### One-time install
 
@@ -307,7 +318,8 @@ mkdir -p ~/Library/LaunchAgents
 sed "s|__HOME__|$HOME|g" infra/deploy/com.flipturn.deploy.plist.template \
   > ~/Library/LaunchAgents/com.flipturn.deploy.plist
 
-# load it; `RunAtLoad=true` triggers an immediate first run (no-op if HEAD matches)
+# load it; `RunAtLoad=true` triggers an immediate first run, which seeds
+# `~/.flipturn-deployed-sha` from current HEAD and exits without deploying.
 launchctl load ~/Library/LaunchAgents/com.flipturn.deploy.plist
 ```
 
