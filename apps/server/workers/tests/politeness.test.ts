@@ -18,6 +18,8 @@ afterAll(async () => {
 
 // RNG that returns 0 every call → sampleInterRequestDelayMs=1500,
 // sampleReadPauseMs=1 (since 0 < 0.2 → 1 + floor(0 * 800) = 1). Total = 1501.
+// Constant RNG: both internal calls in sampleReadPauseMs return 0 (the 0 < 0.2
+// check passes, then 1 + floor(0*800) = 1).
 // We pass this through `options.rng` so the timing-sensitive tests below stay
 // deterministic even though the real path samples each delay.
 const ZERO_RNG = () => 0;
@@ -59,13 +61,35 @@ describe('acquireToken', () => {
   });
 
   it('honors a configured rateLimitMs floor above the sampled range', async () => {
-    // HALF_RNG sample = 2750ms. With rateLimitMs=5000, the floor wins.
-    await acquireToken(redis, TEST_HOST, { rateLimitMs: 5000, rng: HALF_RNG });
-    const start = Date.now();
-    await acquireToken(redis, TEST_HOST, { rateLimitMs: 5000, rng: HALF_RNG });
-    const elapsed = Date.now() - start;
-    expect(elapsed).toBeGreaterThanOrEqual(4900);
-    expect(elapsed).toBeLessThan(5300);
+    // HALF_RNG sample = 2750ms. With fake timers we can use a tiny floor that
+    // still wins (e.g. 3000 > 2750) and assert the actual sleep duration via
+    // a setTimeout spy, avoiding the multi-second wall-clock wait in CI.
+    const observed: number[] = [];
+    const realSetTimeout = global.setTimeout;
+    const setSpy = vi
+      .spyOn(global, 'setTimeout')
+      .mockImplementation(((fn: (...args: unknown[]) => void, ms?: number) => {
+        if (typeof ms === 'number' && ms >= 1000) {
+          observed.push(ms);
+          // Politeness sleep — don't actually wait, just resolve.
+          return realSetTimeout(fn, 0);
+        }
+        return realSetTimeout(fn, ms ?? 0);
+      }) as unknown as typeof setTimeout);
+    try {
+      await acquireToken(redis, TEST_HOST, { rateLimitMs: 3000, rng: HALF_RNG });
+      await acquireToken(redis, TEST_HOST, { rateLimitMs: 3000, rng: HALF_RNG });
+    } finally {
+      setSpy.mockRestore();
+    }
+    // Second acquire's sleep is computed as `last + delay - now`, where a
+    // few ms of redis RTT passes between the two calls — so the observed
+    // sleep is slightly less than the floor (3000ms). The HALF_RNG sample
+    // would yield 2750ms; observing > 2900ms proves the 3000ms floor won.
+    expect(observed.length).toBeGreaterThanOrEqual(1);
+    const sleep = Math.max(...observed);
+    expect(sleep).toBeGreaterThan(2900);
+    expect(sleep).toBeLessThanOrEqual(3000);
   });
 
   it('isolates buckets by host', async () => {
