@@ -216,7 +216,47 @@ Each future plan is intentionally not pre-written. TDD plans for code that won't
 
 ---
 
-## 15. Self-review notes
+## 15. Honest framing: producer vs hostname diversification
+
+A concern surfaced during research after this doc's first draft: every Canadian "alternative" path keeps tracing back to Splash Meet Manager output, which makes Christian Kaufmann (GeoLogix AG / Splash Software, Bern) the actual upstream producer regardless of which hostname we read from.
+
+```
+                Splash Meet Manager 11
+                (run by meet host)
+                       │ Lenex (.lxf)
+   ┌───────────────────┼─────────────────────┐
+   ▼                   ▼                     ▼
+swimrankings.net   results.swimming.ca   swimontario.com/liveresults
+```
+
+Two distinct dependency layers, only one of which this roadmap actually addresses:
+
+| Layer | Diversification possible? | What Phase 4 buys us |
+|---|---|---|
+| **Hostname dependency** | Yes | Avoid swimming.ca's WAF and any single hostname's takedown — read from host clubs and Swim Ontario directly |
+| **Producer dependency** | Mostly no | Most sanctioned Canadian meets run on Splash; downstream surfaces all carry the same data |
+
+**The honest conclusion:** Phase 4's `.hy3` ingestion provides hostname diversification, not substrate diversification, *unless* the host club happens to run Hy-Tek Meet Manager (a minority — MSSAC's Dr. Ralph Hicken Invitational is one confirmed example) rather than Splash. Genuinely Splash-independent sources are limited to Hy-Tek-run club invitationals, OFSAA, Masters Swimming, and a few university circuits — none of which cover the SNC age-group meets that are the wedge.
+
+This is acceptable. Kaufmann's commercial incentive is selling Meet Manager licenses to clubs, not gating consumer apps; the bottleneck risk is real but bounded. The roadmap's value proposition is therefore better-stated as: *insulate Flipturn from any single hostname's posture changes*, not *escape Splash as a data producer*. The latter would require either becoming a meet manager ourselves (anti-goal) or licensing a competing data feed (no productized path exists).
+
+## 16. Survey findings (post-draft research, 2026-05-08)
+
+Two empirical findings that update the roadmap's tactical layer without altering the phase structure:
+
+**Finding 1 — `swimontario.com` is open to identifiable UAs.** Smoke test (2026-05-08): both `FlipTurnBot/0.1` and a browser UA receive identical HTTP 200 responses for `swimontario.com/liveresults/2025/OAG/`. No WAF gating. Implication: ingestion from `swimontario.com` does **not** require the Phase-0 UA values trade-off documented for swimming.ca. We can stay transparent here. Splash Meet Manager 11 HTML output is parseable directly with predictable URL patterns (`{host}/liveresults/{year}/{meetcode}/{yymmdd}{F|P}{eventNumber}.htm`).
+
+**Finding 2 — Phase 4 has a no-outreach preview already available.** A 20-club Ontario survey found exactly one club (**MSSAC**) publishing complete Hy-Tek zips (`.hy3` + `.cl2`) openly with no auth. The April 30, 2026 Dr. Ralph Hicken Invitational zip (563 KB) downloads cleanly on `FlipTurnBot/0.1` and contains a 2 MB `.hy3` and 1.5 MB `.cl2`. This means **`packages/sdif-parser` can be built and validated against a real Canadian `.hy3` today**, without waiting on Phase 3 outreach.
+
+**Implications for phase ordering:**
+
+- **Phase 1 gains an early Splash-HTML parser.** A `swimontario.com/liveresults/` parser is small (HTML scraping a deterministic Splash Meet Manager 11 layout), preserves transparency, and unlocks Ontario championships (OAG, OUA, Provincials) as additional data sources alongside the swimming.ca crawler. This belongs in Phase 1 alongside the crawler, not deferred. A separate plan will be drafted: `docs/superpowers/plans/2026-QX-XX-swimontario-liveresults-parser.md`.
+- **Phase 4 can begin a "preview" slice now.** Build `packages/sdif-parser` against the MSSAC zip while Phase 1 is still running. No relationships needed; the file is publicly published. This decouples Phase 4 readiness from Phase 3 outreach success, which is a meaningful risk reduction. Plan filename target: `docs/superpowers/plans/2026-QX-XX-sdif-parser-mssac-preview.md`.
+- **Phase 3 outreach gets cheaper.** Three surveyed clubs (Brantford BAC, NYAC, Toronto Swim Club) already publish PDFs to public Drive/Dropbox folders. The relationship ask becomes "would you also drop the `.hy3` in the same folder?" — a near-zero lift for the host. These are the highest-conversion-probability targets when Phase 3 opens.
+
+---
+
+## 17. Self-review notes
 
 - **This is a roadmap, not a TDD task list.** It deliberately avoids the `- [ ]` step format because most of the work in scope (homepage, outreach, relationships) is not engineering. The one piece that *is* immediate engineering — the UA unblock — is split off into its own implementable plan rather than crammed into the roadmap as fake task steps.
 - **Brief alignment.** Each phase maps cleanly to existing brief language: Phase 1 = MVP success criterion, Phase 2 = `apps/web` + legal docs already drafted, Phase 4 = `packages/sdif-parser` already named, Phase 5 = brief's "tier-3 host-club ingestion" deferred-list item.
