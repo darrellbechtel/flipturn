@@ -28,6 +28,19 @@ export interface AthleteSnapshot {
   readonly swims: readonly SwimRecord[];
 }
 
+/**
+ * Index-time projection of a swimmer profile page. This is the lightweight
+ * shape consumed by the priority warmer to populate the athlete search index;
+ * it deliberately omits swims/personal-bests, which are parsed by the heavier
+ * `parseAthletePage` for full reconciliation.
+ */
+export interface ParsedSwimmer {
+  readonly primaryName: string;
+  readonly clubName: string | null;
+  readonly gender: Gender | null;
+  readonly dobYear: number | null;
+}
+
 export interface MeetEventRecord {
   readonly distanceM: number;
   readonly stroke: Stroke;
