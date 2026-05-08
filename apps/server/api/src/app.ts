@@ -8,6 +8,7 @@ import { athletesRoutes, userAthletesRoutes } from './routes/athletes.js';
 import { dataRoutes } from './routes/data.js';
 import { healthRoute, meRoutes } from './routes/ops.js';
 import { SIGN_IN_PAGE_HTML } from './routes/signInPage.js';
+import { wellKnownRoutes } from './routes/wellKnown.js';
 
 export interface AppDeps {
   readonly prisma: PrismaClient;
@@ -48,6 +49,12 @@ export function createApp(deps: AppDeps): Hono {
   // when the user clicks "Sign in" — guards against email scanners /
   // link-previewers prefetching and burning the token.
   app.get('/auth', (c) => c.html(SIGN_IN_PAGE_HTML));
+
+  // Apple/Google fetch these to validate Universal Links / App Links.
+  // See routes/wellKnown.ts — empty manifests when IOS_TEAM_ID /
+  // ANDROID_CERT_SHA256 are unset, so the endpoints are always 200 with
+  // valid JSON (avoids OS-level 404 caching).
+  app.route('/.well-known', wellKnownRoutes());
 
   return app;
 }
