@@ -7,6 +7,7 @@ import { authRoutes } from './routes/auth.js';
 import { athletesRoutes, userAthletesRoutes } from './routes/athletes.js';
 import { dataRoutes } from './routes/data.js';
 import { healthRoute, meRoutes } from './routes/ops.js';
+import { SIGN_IN_PAGE_HTML } from './routes/signInPage.js';
 
 export interface AppDeps {
   readonly prisma: PrismaClient;
@@ -38,6 +39,15 @@ export function createApp(deps: AppDeps): Hono {
   app.route('/v1/user-athletes', userAthletesRoutes(deps));
   app.route('/v1/health', healthRoute(deps));
   app.route('/v1/me', meRoutes(deps));
+
+  // Browser-facing magic-link landing page, served at the apex
+  // (`https://flipturn.ca/auth?token=...`). The cloudflared tunnel routes
+  // both `api.flipturn.ca` and `flipturn.ca` to this same process, so the
+  // page can POST to the same-origin `/v1/auth/magic-link/consume` either way.
+  // GET is non-destructive (read-only HTML); the page only POSTs the token
+  // when the user clicks "Sign in" — guards against email scanners /
+  // link-previewers prefetching and burning the token.
+  app.get('/auth', (c) => c.html(SIGN_IN_PAGE_HTML));
 
   return app;
 }
