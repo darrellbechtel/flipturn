@@ -8,6 +8,7 @@ import { authRoutes } from './routes/auth.js';
 import { athletesRoutes, userAthletesRoutes } from './routes/athletes.js';
 import { dataRoutes } from './routes/data.js';
 import { healthRoute, meRoutes } from './routes/ops.js';
+import { adminRoutes } from './routes/admin.js';
 import { SIGN_IN_PAGE_HTML } from './routes/signInPage.js';
 import { wellKnownRoutes } from './routes/wellKnown.js';
 
@@ -51,6 +52,7 @@ export function createApp(deps: AppDeps): Hono {
   app.route('/v1/user-athletes', userAthletesRoutes(deps));
   app.route('/v1/health', healthRoute(deps));
   app.route('/v1/me', meRoutes(deps));
+  app.route('/v1/admin', adminRoutes(deps.prisma));
 
   // Browser-facing magic-link landing page, served at the apex
   // (`https://flipturn.ca/auth?token=...`). The cloudflared tunnel routes

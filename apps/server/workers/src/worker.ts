@@ -4,9 +4,11 @@ import { getPrisma } from '@flipturn/db';
 import {
   SCRAPE_ATHLETE_QUEUE,
   PRIORITY_WARMER_QUEUE,
+  CLUB_DIRECTORY_QUEUE,
   enqueueWarmerRun,
   type ScrapeAthleteJob,
   type PriorityWarmerJob,
+  type ClubDirectoryCrawlJob,
 } from './queue.js';
 import { getRedis } from './redis.js';
 import { getLogger } from './logger.js';
@@ -16,6 +18,7 @@ import { reconcile } from './reconcile.js';
 import { recomputePersonalBests } from './personalBest.js';
 import { buildAthleteUrl } from './url.js';
 import { runPriorityWarmer, type FetchFn } from './jobs/priorityWarmer.js';
+import { runClubDirectoryCrawl } from './jobs/clubDirectoryCrawl.js';
 import { planDailyWarm } from './scheduler/warmerScheduler.js';
 import { CRAWL_TZ } from './scheduler/window.js';
 import { Sentry } from './sentry.js';
@@ -266,4 +269,44 @@ export async function startPriorityWarmerPlanWorker(): Promise<
   });
 
   return { queue, worker };
+}
+
+/**
+ * Register the club-directory crawl worker. Gated on `INDEX_CRAWL_ENABLED`
+ * for the same reason the warmer is — constructing a BullMQ Worker eagerly
+ * opens a Redis connection. The processor calls `runClubDirectoryCrawl` with
+ * the politeFetch adapter so robots.txt + budget logic still applies.
+ */
+export function startClubDirectoryWorker(): Worker<ClubDirectoryCrawlJob> | undefined {
+  if (process.env.INDEX_CRAWL_ENABLED !== 'true') return undefined;
+
+  const log = getLogger();
+  const worker = new Worker<ClubDirectoryCrawlJob>(
+    CLUB_DIRECTORY_QUEUE,
+    async (job: Job<ClubDirectoryCrawlJob>) => {
+      const { reason } = job.data;
+      log.info({ jobId: job.id, reason }, 'club-directory crawl started');
+      const result = await runClubDirectoryCrawl({
+        prisma: getPrisma(),
+        fetch: politeFetchAdapter,
+      });
+      log.info({ jobId: job.id, ...result }, 'club-directory crawl complete');
+      return result;
+    },
+    { connection: getRedis(), concurrency: 1 },
+  );
+
+  worker.on('failed', (job, err) => {
+    if (err instanceof FetchRetryError) {
+      log.warn(
+        { jobId: job?.id, retryAfterMs: err.retryAfterMs },
+        'club-directory crawl will retry on backoff',
+      );
+    } else {
+      log.error({ jobId: job?.id, err }, 'club-directory crawl failed');
+      Sentry.captureException(err);
+    }
+  });
+
+  return worker;
 }

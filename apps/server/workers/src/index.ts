@@ -9,6 +9,7 @@ import {
   startSchedulerWorker,
   startPriorityWarmerWorker,
   startPriorityWarmerPlanWorker,
+  startClubDirectoryWorker,
 } from './worker.js';
 import { startScheduler } from './scheduler.js';
 import { startHeartbeat, stopHeartbeat } from './heartbeat.js';
@@ -23,9 +24,10 @@ async function main() {
   const scrapeWorker = startScrapeWorker();
   const schedulerWorker = startSchedulerWorker();
   await startScheduler();
-  // Both no-op unless INDEX_CRAWL_ENABLED === 'true'.
+  // All three no-op unless INDEX_CRAWL_ENABLED === 'true'.
   const priorityWarmerWorker = startPriorityWarmerWorker();
   const priorityWarmerPlan = await startPriorityWarmerPlanWorker();
+  const clubDirectoryWorker = startClubDirectoryWorker();
   startHeartbeat();
   log.info(
     { indexCrawlEnabled: process.env.INDEX_CRAWL_ENABLED === 'true' },
@@ -42,6 +44,7 @@ async function main() {
       await priorityWarmerPlan.worker.close();
       await priorityWarmerPlan.queue.close();
     }
+    if (clubDirectoryWorker) await clubDirectoryWorker.close();
     await disconnectRedis();
     process.exit(0);
   };

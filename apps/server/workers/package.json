@@ -11,6 +11,7 @@
     "./parser/athletePage": "./src/parser/athletePage.ts",
     "./parser/searchResults": "./src/parser/searchResults.ts",
     "./jobs/priorityWarmer": "./src/jobs/priorityWarmer.ts",
+    "./jobs/clubDirectoryCrawl": "./src/jobs/clubDirectoryCrawl.ts",
     "./reconcile": "./src/reconcile.ts",
     "./personalBest": "./src/personalBest.ts"
   },

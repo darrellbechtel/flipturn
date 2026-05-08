@@ -91,3 +91,53 @@ export async function enqueueWarmerRun(
   );
   return added.id ?? '<no-id>';
 }
+
+// ---------------------------------------------------------------------------
+// Club directory crawl queue: hydrates the Club table from the SNC "Find a
+// Club" JSONP feed. One-shot (no per-day fan-out); a single run pulls the
+// entire directory and upserts every Club row.
+// ---------------------------------------------------------------------------
+
+export const CLUB_DIRECTORY_QUEUE = 'club-directory-crawl';
+
+export interface ClubDirectoryCrawlJob {
+  /** What triggered this run: scheduled cron or an admin request. */
+  readonly reason: 'cron' | 'admin';
+}
+
+let _clubDirectoryQueue: Queue<ClubDirectoryCrawlJob> | undefined;
+
+export function getClubDirectoryQueue(): Queue<ClubDirectoryCrawlJob> {
+  if (!_clubDirectoryQueue) {
+    _clubDirectoryQueue = new Queue<ClubDirectoryCrawlJob>(CLUB_DIRECTORY_QUEUE, {
+      connection: getRedis(),
+      defaultJobOptions: {
+        removeOnComplete: { count: 50 },
+        removeOnFail: { count: 500 },
+      },
+    });
+  }
+  return _clubDirectoryQueue;
+}
+
+/**
+ * Enqueue a one-shot club-directory crawl. We don't use a stable jobId here
+ * because admin triggers should always run (the daily cron path, when added,
+ * can supply its own dedup jobId).
+ */
+export async function enqueueClubDirectoryCrawl(
+  reason: ClubDirectoryCrawlJob['reason'] = 'cron',
+  delayMs = 0,
+): Promise<string> {
+  const queue = getClubDirectoryQueue();
+  const added = await queue.add(
+    `crawl:${reason}`,
+    { reason },
+    {
+      delay: delayMs,
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 30_000 },
+    },
+  );
+  return added.id ?? '<no-id>';
+}
