@@ -23,25 +23,29 @@ describe('auth API methods', () => {
   });
 
   it('consumeMagicLink returns sessionToken', async () => {
+    const body = { sessionToken: 'tok-1' };
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
       headers: new Headers({ 'content-type': 'application/json' }),
-      json: async () => ({ sessionToken: 'tok-1' }),
+      json: async () => body,
+      text: async () => JSON.stringify(body),
     }) as unknown as typeof globalThis.fetch;
     const r = await consumeMagicLink('magic-1');
     expect(r.sessionToken).toBe('tok-1');
   });
 
   it('getMe sends bearer token', async () => {
+    const body = {
+      user: { id: 'u', email: 'a@b.com', createdAt: '2026-01-01' },
+      athletes: [],
+    };
     const fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
       headers: new Headers({ 'content-type': 'application/json' }),
-      json: async () => ({
-        user: { id: 'u', email: 'a@b.com', createdAt: '2026-01-01' },
-        athletes: [],
-      }),
+      json: async () => body,
+      text: async () => JSON.stringify(body),
     });
     globalThis.fetch = fetch as unknown as typeof globalThis.fetch;
     await getMe('tok-1');

@@ -62,10 +62,6 @@ export async function apiClient<T = unknown>(
 
   const response = await fetch(url, init);
 
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
   if (!response.ok) {
     let payload: ApiErrorPayload = {};
     try {
@@ -77,5 +73,13 @@ export async function apiClient<T = unknown>(
     throw new ApiError(response.status, payload, path);
   }
 
-  return (await response.json()) as T;
+  // Some endpoints return 2xx with no body — `/magic-link/request` is 202
+  // with `content-length: 0`, `DELETE /me` is 204, etc. Calling
+  // `response.json()` on an empty body throws "Unexpected end of input".
+  // Read as text first; only parse if there's content.
+  const text = await response.text();
+  if (text.length === 0) {
+    return undefined as T;
+  }
+  return JSON.parse(text) as T;
 }

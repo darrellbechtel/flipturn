@@ -12,14 +12,29 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-function mockFetch(response: Partial<Response> & { json?: () => Promise<unknown> }) {
+// `body` lets a test simulate an empty 2xx response (e.g. 202 / 204 with
+// `content-length: 0`). When omitted it defaults to an empty JSON object.
+function mockFetch(
+  response: Partial<Response> & {
+    json?: () => Promise<unknown>;
+    body?: string | null;
+  },
+) {
+  const explicitBody = 'body' in response;
+  const bodyText = explicitBody
+    ? (response.body ?? '')
+    : JSON.stringify(response.json ? '__placeholder__' : {});
   globalThis.fetch = vi.fn().mockResolvedValue({
     ok: response.status ? response.status < 400 : true,
     status: response.status ?? 200,
     statusText: response.statusText ?? 'OK',
     headers: new Headers(response.headers ?? { 'content-type': 'application/json' }),
     json: response.json ?? (async () => ({})),
-    text: async () => JSON.stringify(await (response.json?.() ?? Promise.resolve({}))),
+    text: async () => {
+      if (explicitBody) return bodyText;
+      const j = response.json ? await response.json() : {};
+      return JSON.stringify(j);
+    },
   } as Response);
 }
 
@@ -74,8 +89,21 @@ describe('apiClient', () => {
   });
 
   it('returns void for 204 responses (no body)', async () => {
-    mockFetch({ status: 204, json: async () => ({}) });
+    mockFetch({ status: 204, body: '' });
     const result = await apiClient<void>('/v1/me', { method: 'DELETE', sessionToken: 'tok' });
+    expect(result).toBeUndefined();
+  });
+
+  // Regression for "JSON parse error: Unexpected end of input" surfacing
+  // on the magic-link sign-in flow: the API returns 202 with
+  // `content-length: 0`, but the client used to call `response.json()`
+  // for any non-204 success.
+  it('returns void for 2xx responses with empty bodies (e.g. 202 from /magic-link/request)', async () => {
+    mockFetch({ status: 202, body: '' });
+    const result = await apiClient<void>('/v1/auth/magic-link/request', {
+      method: 'POST',
+      body: { email: 'a@b.com' },
+    });
     expect(result).toBeUndefined();
   });
 });
