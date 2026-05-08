@@ -12,6 +12,7 @@ import {
 } from '../auth.js';
 import { sessionMiddleware } from '../middleware/session.js';
 import { rateLimit } from '../middleware/rateLimit.js';
+import { SIGN_IN_PAGE_HTML } from './signInPage.js';
 
 // No-op middleware: used when deps.redis is undefined (test harnesses) so the
 // route shape stays identical and rate-limit logic is the only thing skipped.
@@ -66,6 +67,15 @@ export function authRoutes(deps: AppDeps): Hono {
       return c.body(null, 202);
     },
   );
+
+  // Browser-friendly fallback: emails clicked from a desktop browser (or any
+  // device without the mobile app installed) land here. We render an HTML
+  // page that reads `?token=` client-side and only POSTs to `/consume` when
+  // the user clicks "Sign in" — never auto-consume on GET, since email
+  // scanners / link previewers prefetch URLs and would burn the token.
+  r.get('/magic-link/consume', (c) => {
+    return c.html(SIGN_IN_PAGE_HTML);
+  });
 
   r.post('/magic-link/consume', zValidator('json', MagicLinkConsumeSchema), async (c) => {
     const { token } = c.req.valid('json');
