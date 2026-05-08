@@ -55,7 +55,7 @@ describe('searchRemoteAndPersistStubs', () => {
     const persisted = await h.prisma.athlete.findMany();
     expect(persisted).toHaveLength(result.stubsCreated);
     for (const a of persisted) {
-      expect(a.source).toBe('CRAWLED');
+      expect(a.source).toBe('REMOTE_DISCOVERY');
       expect(a.alternateNames).toEqual([]);
     }
   });

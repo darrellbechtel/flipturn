@@ -77,7 +77,6 @@ export function adminRoutes(prisma: PrismaClient): Hono {
           id: true,
           name: true,
           lastCrawledAt: true,
-          crawlPriority: true,
         },
       }),
     ]);
@@ -89,7 +88,6 @@ export function adminRoutes(prisma: PrismaClient): Hono {
         id: club.id,
         name: club.name,
         lastCrawledAt: club.lastCrawledAt?.toISOString() ?? null,
-        crawlPriority: club.crawlPriority,
       })),
     });
   });

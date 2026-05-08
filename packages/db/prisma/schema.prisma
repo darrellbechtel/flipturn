@@ -76,6 +76,7 @@ model Athlete {
 enum AthleteSource {
   USER_ONBOARDED
   CRAWLED
+  REMOTE_DISCOVERY
 }
 
 model Club {
@@ -86,14 +87,12 @@ model Club {
   city          String?
   rosterUrl     String?
   lastCrawledAt DateTime?
-  crawlPriority Int       @default(0)
   athletes      Athlete[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@index([province])
   @@index([name])
-  @@index([crawlPriority, lastCrawledAt])
 }
 
 model UserAthlete {

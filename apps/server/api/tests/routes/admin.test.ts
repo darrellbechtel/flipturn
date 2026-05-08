@@ -184,7 +184,6 @@ describe('Admin routes', () => {
           id: string;
           name: string;
           lastCrawledAt: string | null;
-          crawlPriority?: number;
         }>;
       };
 
@@ -196,7 +195,6 @@ describe('Admin routes', () => {
       expect(body.recentCrawls[1]?.id).toBe('ON-CW');
       expect(body.recentCrawls[2]?.id).toBe('AB-NEW');
       expect(body.recentCrawls[2]?.lastCrawledAt).toBeNull();
-      expect(body.recentCrawls[0]?.crawlPriority).toBe(0);
     });
 
     it('caps at 50 rows', async () => {

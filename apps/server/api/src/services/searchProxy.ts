@@ -61,11 +61,11 @@ export async function searchRemoteAndPersistStubs(deps: {
         sncId: r.sncId,
         primaryName: r.displayName,
         alternateNames: [],
-        // TODO(v2 Task 15): switch to `REMOTE_DISCOVERY` once the enum lands.
-        // Until then `CRAWLED` is the closest existing classifier — these
-        // rows came from the SNC search page, so they're crawler-sourced
-        // even though the warmer job didn't fill the full profile yet.
-        source: 'CRAWLED' satisfies AthleteSource,
+        // Marked REMOTE_DISCOVERY so the warmer (which only persists
+        // CRAWLED-tier athletes) can promote these stubs to a full profile
+        // on its next pass without conflating them with athletes already
+        // discovered via club-roster crawls.
+        source: 'REMOTE_DISCOVERY' satisfies AthleteSource,
       },
     });
     stubsCreated++;
