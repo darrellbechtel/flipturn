@@ -1,6 +1,7 @@
 import { Hono, type Context } from 'hono';
 import type { PrismaClient } from '@flipturn/db';
 import type { Redis } from 'ioredis';
+import type { FetchFn } from '@flipturn/workers/jobs/priorityWarmer';
 import type { EmailSender } from './email.js';
 import { errorHandler } from './middleware/error.js';
 import { authRoutes } from './routes/auth.js';
@@ -28,6 +29,16 @@ export interface AppDeps {
    * collide in the shared 'unknown' bucket.
    */
   readonly rateLimitIdentify?: ((c: Context) => string) | undefined;
+  /**
+   * Optional fetch adapter for the athlete-search remote fallback. When
+   * undefined, the search service skips the fallback and returns whatever
+   * local hits exist (still useful, just narrower coverage).
+   *
+   * Production wiring should pass a thin adapter over `politeFetch` from
+   * `@flipturn/workers/fetch`; tests pass a `vi.fn` so they can assert on
+   * the outbound URL without touching swimming.ca.
+   */
+  readonly searchFetch?: FetchFn | undefined;
 }
 
 export function createApp(deps: AppDeps): Hono {

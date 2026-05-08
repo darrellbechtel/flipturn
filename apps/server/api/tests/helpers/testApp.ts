@@ -56,6 +56,8 @@ export async function createTestApp(opts?: Partial<AppDeps>): Promise<TestApp> {
     baseUrl: 'http://localhost:3000',
     mobileDeepLinkBase: 'flipturn://auth',
     rateLimitIdentify: () => testIdentity,
+    // Default: no remote fallback — tests that exercise the search route
+    // pass `searchFetch` through `opts` to inject a vi.fn().
     ...opts,
   });
 
