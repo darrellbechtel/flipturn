@@ -41,12 +41,9 @@ jobs:
       # The api/workers test helpers shell out to `docker exec
       # flipturn-postgres ...` against the container brought up by the compose
       # step below; these URLs match `compose.dev.yaml`'s host port mappings.
+      # They're also used by `prisma generate` during `pnpm install`.
       DATABASE_URL: postgresql://flipturn:flipturn_dev@localhost:55432/flipturn?schema=public
       REDIS_URL: redis://localhost:56379
-      # The api env schema declares these as `z.string().transform(empty -> undefined)`,
-      # so they must be present (even empty) in process.env or `getEnv()` exits 1.
-      SENTRY_DSN: ''
-      RESEND_API_KEY: ''
     steps:
       - uses: actions/checkout@v4
 
@@ -63,6 +60,14 @@ jobs:
 
       - name: Bring up Postgres + Redis
         run: docker compose -f compose.dev.yaml up -d --wait
+
+      # The vitest setup files in api / workers load repo-root `.env` to
+      # override vitest's injected `BASE_URL=/` and to provide empty
+      # `SENTRY_DSN` / `RESEND_API_KEY` (the api schema requires non-undefined
+      # strings). `.env.example` already has the right shape — `.env` is in
+      # `.gitignore`, so we drop it in place per-run.
+      - name: Seed .env from .env.example
+        run: cp .env.example .env
 
       - run: pnpm test
 
