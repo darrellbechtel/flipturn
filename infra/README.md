@@ -171,6 +171,90 @@ curl -i https://api.flipturn.ca/v1/health
 Expected: HTTP 200, body `{"db":"ok","redis":"ok"}`. Cloudflare will also
 show the tunnel as "Healthy" in the Zero Trust dashboard.
 
+## Unattended boot recovery (residential single-tenant only)
+
+A residential power-outage cycle should bring `api.flipturn.ca` back without
+anyone touching the Mac Mini. The chain that makes this work:
+
+1. Power-on → disk decrypts automatically (FileVault **off**).
+2. macOS auto-logs the deploying user in (no password prompt).
+3. User-level `launchd` runs `pm2 resurrect`, which starts api / workers / tunnel.
+4. OrbStack auto-starts at login (`app.start_at_login = true`).
+5. Postgres + Redis come back via `restart: unless-stopped` in `compose.dev.yaml`.
+
+End-to-end recovery is ~60s from power-on to public health 200, no human required.
+
+### Security trade-off
+
+This setup deliberately turns off two macOS protections:
+
+- **FileVault is disabled.** The disk is unencrypted at rest. Anyone with
+  physical access to a powered-off Mac Mini can read everything on it,
+  including `~/.config/flipturn/secrets.env` (Resend key, JWT secret, DB
+  password) and the swim-data Postgres volume.
+- **Auto-login is enabled.** Anyone who powers the Mac Mini on gets a
+  logged-in session of the deploying user without a password prompt.
+
+This is acceptable for a single-tenant residential deploy where the threat
+model is "uptime through power blips," not "physical theft." Do **not**
+replicate this configuration on a multi-user host, an office, or anywhere the
+machine's physical security can't be assumed.
+
+### One-time setup
+
+1. **Disable FileVault.** Run in Terminal:
+
+   ```bash
+   sudo fdesetup disable -user <deploying-user>
+   ```
+
+   Decryption runs in the background — `fdesetup status` shows progress. Wait
+   for `FileVault is Off.` before continuing.
+
+2. **Enable OrbStack at login** (if not done in "First deploy" step 5):
+
+   ```bash
+   orb config set app.start_at_login true
+   ```
+
+3. **Configure auto-login.** On macOS 26 the System Settings GUI sets
+   `autoLoginUser` but does **not** reliably write `/etc/kcpassword`, so do
+   both manually. In Terminal (replace `hank` with the deploying user):
+
+   ```bash
+   sudo defaults write /Library/Preferences/com.apple.loginwindow autoLoginUser hank
+   read -rs -p "Account password: " PW; echo
+   sudo python3 - "$PW" <<'PY'
+   import sys, os
+   key = bytes([0x7D,0x89,0x52,0x23,0xD2,0xBC,0xDD,0xEA,0xA3,0xB9,0x1F])
+   pw  = sys.argv[1].encode("utf-8")
+   pad = (-len(pw)) % 12 or 12
+   buf = bytearray(pw + b"\x00" * pad)
+   for i in range(len(buf)):
+       buf[i] ^= key[i % len(key)]
+   open("/etc/kcpassword", "wb").write(bytes(buf))
+   os.chmod("/etc/kcpassword", 0o600)
+   PY
+   unset PW
+   ```
+
+   `/etc/kcpassword` should be `-rw------- root:wheel` and a multiple of 12
+   bytes. The cipher is Apple's documented kcpassword XOR scheme.
+
+4. **Verify.** Reboot the Mac Mini. It should come back up with no password
+   prompt, and `curl -sS https://api.flipturn.ca/v1/health` should return
+   `{"db":"ok","redis":"ok"}` within ~60s of power-on.
+
+### Reverting
+
+If the Mac Mini ever needs to be relocated or sold:
+
+```bash
+sudo rm /etc/kcpassword
+sudo defaults delete /Library/Preferences/com.apple.loginwindow autoLoginUser
+sudo fdesetup enable          # interactive — prints a recovery key, save it
+```
+
 ## Routine ops
 
 ```bash
