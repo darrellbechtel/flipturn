@@ -27,6 +27,7 @@ Public docs that say things like "athletes are D0 records" describe the **`.cl2`
 - Every line is padded with spaces to a fixed width — **130 characters** in the MSSAC fixture.
 - Every line ends in a 2-digit ASCII checksum at columns 129-130 (`l[128:130]`). We **don't validate** the checksum in v1 (the `.hy3`'s is a custom, non-standard polynomial; revisiting if we ever encounter corruption in real ingest).
 - Columns are documented 1-indexed (so cols 1-2 = the record code).
+- Slicing convention: cols *a*-*b* (inclusive, 1-indexed) maps to `line.slice(a-1, b)` in JS / `line[a-1:b]` in Python. Width = `b - a + 1`.
 
 ## Record codes present in the `.hy3` fixture
 
@@ -76,8 +77,8 @@ A107Results From MM to TM    Hy-Tek, Ltd    MM5 7.0Gb     05032026  8:28 PMEtobi
 | 30-44  | 15    | Software vendor        | `Hy-Tek, Ltd    `             | |
 | 45-58  | 14    | Software product / version | `MM5 7.0Gb     `          | "MM5 7.0Gb" = Meet Manager 5, build 7.0Gb. |
 | 59-66  | 8     | File-creation date     | `05032026`                    | `MMDDYYYY`. |
-| 67-74  | 8     | File-creation time     | `  8:28 PM`                   | Right-aligned, AM/PM suffix. |
-| 75-128 | 54    | Host / file owner name | `Etobicoke Swim Club` (padded) | Free text. May include the meet host club. |
+| 67-75  | 9     | File-creation time     | `  8:28 PM`                   | Right-aligned, AM/PM suffix (the trailing `M` lives at col 75; the field is 9 chars wide, not 8). |
+| 76-128 | 53    | Host / file owner name | `Etobicoke Swim Club` (padded) | Free text. May include the meet host club. |
 | 129-130 | 2    | Checksum               | `05`                          | 2-digit; not validated. |
 
 **Parser MUST extract:** software-version string (cols 30-58 trimmed) and file-creation date (cols 59-66 → ISO date). Other fields are nice-to-have metadata and may be exposed as `unknown` typed fields.
@@ -249,8 +250,7 @@ E1F51553BaileFG   100C  0 10  0S 15.00 49A  135.38L  135.38L    0.00    0.00   N
 | 9-13    | 5     | Last-name truncation               | `Belbi`, `Baile`, `Karpu` | First 5 chars of last name (a HY-TEK denorm; for our purposes, ignore — the join key is cols 4-8). |
 | 14      | 1     | Athlete gender (repeat)            | `M` / `F`     | Same as col 3 in every row. Ignore. |
 | 15      | 1     | Boys/Girls indicator               | `B` (Boys) / `G` (Girls) | HY-TEK age-group nomenclature. Same value as col 14 derived. Ignore. |
-| 16-19   | 4     | **Distance**                       | `   5`, `  10`, ` 100`, ` 200`, ` 400`, ` 800`, `1500` | Right-aligned, in pool-length units (meters or yards per col 51). Trim and parse as int. |
-| 20-21   | 2     | _(continuation of distance / cont.)_ | (always trailing of distance field; included in `Number(line.slice(15,21))`) | The distance occupies the right edge of cols 16-21; safest to slice cols 16-21 and `parseInt`. |
+| 16-21   | 6     | **Distance**                       | `    50`, `   100`, `   200`, `   400`, `   800`, `  1500` | Right-aligned integer in pool-length units (meters or yards per col 51). Both `  50` and `1500` fit; safest to extract via `Number(line.slice(15,21))`. |
 | 22      | 1     | **Stroke code**                    | `A`, `B`, `C`, `D`, `E` | HY-TEK letters: **A = Free**, **B = Back**, **C = Breast**, **D = Fly**, **E = IM**. Verified by cross-referencing `.cl2` event codes (where `1=FR`, `2=BK`, `3=BR`, `4=FL`, `5=IM`). |
 | 23-25   | 3     | Age-group lower bound              | `  0`, ` 11`, ` 13`, ` 15` | "0" = open (no lower bound). |
 | 26-28   | 3     | Age-group upper bound              | ` 10`, ` 12`, ` 14`, `109` | "109" sentinel = unlimited / open upper. |
@@ -260,7 +260,7 @@ E1F51553BaileFG   100C  0 10  0S 15.00 49A  135.38L  135.38L    0.00    0.00   N
 | 39-41   | 3     | Entry-rank / seed                  | ` 49`, ` 38`, `801` | Right-aligned int. `8xx` indicates "no time / unseeded". Not used by v1. |
 | 42      | 1     | Heat letter / session code         | `A`, `B`, `C`, `S` | HY-TEK session/heat label. Not used by v1. |
 | 43-50   | 8     | **Final time** (or only-time)      | `   27.98`, `  135.38`, `  321.74` | `ssss.hh` for swims under 100s, `mmss.hh` for swims over 100s — actually it's ALL `ssss.hh` (total seconds, hundredths). E.g. `135.38` = 2:15.38 = 135.38 s. **Always parse as a float total-seconds.** `0.00` → no-swim / DNS / DQ-no-time. |
-| 51      | 1     | **Course of final time**           | `L` (LCM), `S` (SCM), `Y` (SCY), or blank | If blank, the final-time slot is a 0.00 placeholder (DNS). |
+| 51      | 1     | **Course of final time**           | `L` (LCM), `S` (SCM), `Y` (SCY), or blank | When the final-time is `0.00` (DNS / no-time), the course flag may be blank or `L`; treat the `0.00` value itself as the null sentinel rather than the course flag. |
 | 52-59   | 8     | "Best time" duplicate              | `   27.98`, `  135.38` | In timed-finals (single round) swims, equals cols 43-50. In prelim-and-final swims, also equals the final time (cols 43-50). Ignore. |
 | 60      | 1     | Course of best-time duplicate      | `L` / `S` / `Y` | Ignore. |
 | 61-68   | 8     | Standard-time / qualifying delta   | `    0.00`, `    9.00`, `   13.00` | Seconds under/over the qualifying time. Not used by v1. |
@@ -316,6 +316,14 @@ E2F  116.86LQ      0  5  6  0   0  0  116.85  116.87    0.00       116.86     0.
 E2F    0.00LR      0  2  7  0   0  0    0.00    0.00    0.00         0.00     0.00     05022026                           0     45
 ```
 
+Column ruler (cols 1, 11, 21, …, 121, 130):
+```
+0         1         2         3         4         5         6         7         8         9         0         1         2  3
+1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+E2P   28.41L       0 12  6  5  72  0   28.44   28.38    0.00        28.41     0.00     05022026    0                            76
+E2F  116.86LQ      0  5  6  0   0  0  116.85  116.87    0.00       116.86     0.00 0.4005032026                           0     47
+```
+
 | Cols    | Width | Field                       | Example                      | Notes |
 | ------- | ----- | --------------------------- | ---------------------------- | ----- |
 | 1-2     | 2     | Record code                 | `E2`                         | |
@@ -323,15 +331,7 @@ E2F    0.00LR      0  2  7  0   0  0    0.00    0.00    0.00         0.00     0.
 | 4-11    | 8     | Time of this round          | `   28.41`, `  116.86`, `    0.00` | Seconds. `0.00` when col 13 indicates the swim wasn't actually swum (R/S markers). |
 | 12      | 1     | Course of this time         | `L`                          | Always `L` in this fixture. |
 | 13      | 1     | **Status flag**             | ` ` (5 152), `R` (316), `S` (125), **`Q` = DQ (53)** | **`Q` = disqualified.** Other markers in fixture: `R` = "no second round" (the row's E1 is the only swim and this E2 is a placeholder); `S` = "scratched". For v1 the parser only branches on `Q`. |
-| 14-19   | 6     | _(blank)_                   | spaces                       | |
-| 20-21   | 2     | Heat number                 | ` 0`, `12`, ` 5`             | |
-| 22-23   | 2     | Lane                        | `12`, ` 6`, ` 5`             | |
-| 24-25   | 2     | Place in heat               | ` 6`, ` 7`, ` 4`             | |
-| 26-29   | 4     | Final place                 | `  72`, `   2`, `  16`       | "Place" — overall finish across all heats. |
-| 30-37   | 8     | Reaction-time / split       | `   28.44`, `  116.85`       | When present, the first-50 split. |
-| 38-45   | 8     | Other split                 | `   28.38`                   | Subsequent splits when packed in line. |
-| 46-53   | 8     | Other split                 | `    0.00`                   | |
-| 54-65   | 12    | Time confirmation           | `       28.41`               | Right-aligned, equals col 4-11 plus padding. |
+| 14-65   | 52    | _(packed heat / lane / place / splits block — see note below)_ | `      0 12  6  5  72  0   28.44   28.38    0.00     ` | Holds heat number, lane, place-in-heat, overall place, and partial-split times. Layout to be reverse-engineered in a later slice; **not parsed in v1.** |
 | 66-73   | 8     | _(blank or reaction-time)_  | `     0.00` / ` 0.4005`      | Sometimes has reaction time (`0.40`); sometimes blank. |
 | 74-87   | 14    | _(varies)_                  |                              | |
 | 88-95   | 8     | **Swim date**               | `05022026`, `05012026`, `05032026`, `04302026` | `MMDDYYYY` of the day this round was swum. **Parser MUST extract** to attribute swims to specific days within the meet. |
@@ -340,7 +340,7 @@ E2F    0.00LR      0  2  7  0   0  0    0.00    0.00    0.00         0.00     0.
 
 **Parser MUST extract:** round (col 3), prelim time (cols 4-11 → float; null if 0.00), course (col 12), DQ status (col 13 == `'Q'`), swim date (cols 88-95 → ISO).
 
-The mid-line numerics at cols 30-65 are partial-split data redundant with `G1`. **For the v1 slice, do NOT parse splits from E2;** they are sometimes empty when the actual splits live in a `G1`. Use `G1` if/when splits are needed (out of scope for v1).
+The mid-line block at cols 14-65 packs heat/lane/place/splits in a layout we have not yet fully reverse-engineered against the fixture (preliminary inspection suggests heat ~22-23, lane ~25-26, place-in-heat ~28-29, final place ~31-33, with partial-split times in the trailing region — but ranges have not been verified across enough lines to commit to). **For the v1 slice, do NOT parse this block;** the v1 parser doesn't need heat/lane/place, and split data is more reliably read from `G1` records (out of scope for v1). When a later slice needs heat/lane/place, re-derive ranges empirically from the fixture before committing.
 
 ---
 
@@ -387,3 +387,16 @@ These are flagged for future slices, **not** blockers for v1:
 - **Power-points / standard-time deltas.** `E1` cols 61-68 carry qualifying-time deltas; could feed a "how close to provincials cut" feature later.
 - **Time-trial vs swim-off rounds.** `E1` col 96 marks `T` (time trial) and `S` (swim-off). For v1 we treat both as "results-eligible swims"; if an analytics slice ever needs to filter them, the column is documented above.
 - **Scratch / DNS encoding.** `E2` col 13 markers `R` and `S` (316 + 125 occurrences) are not unambiguously documented above. They appear correlated with 0.00 times, and we treat them as "not-a-swim" in v1 by virtue of `final_time === null`. If a precise distinction becomes required, re-inspect the fixture.
+
+---
+
+## Edge cases not present in this fixture
+
+The MSSAC fixture is the only `.hy3` we have right now, so some fields that are *always* populated here may be missing/blank/zero in `.hy3` files from other clubs or other meet-management workflows. The parser should defensively handle these even though we can't unit-test them yet — when we eventually receive a non-MSSAC file, the test suite should be extended with a fixture that exercises each.
+
+- **D1 date-of-birth (cols 89-96)** — populated for all 748/748 athletes in this fixture. Some meets may carry all-zero (`00000000`) DOBs for athletes whose birth-year is unknown or who have privacy-suppressed birthdates. **Parser SHOULD treat `00000000` as null DOB** (not as the year 0000). Likewise an all-blank slot.
+- **D1 SNC registration id (cols 70-78)** — populated for all 748/748 athletes here. Other meets may carry blanks (e.g. visiting non-Swim-Canada athletes or guest swimmers). The "must extract" line above already says "null if all-spaces" — this remains correct; the call-out here is that we have *no fixture coverage* of that path, so the parser must not assume the field is always non-empty.
+- **Athletes with zero swims.** All 748 D1s in this fixture have at least one E1. Other files may include entered-but-scratched athletes with no E1/E2 lines. The parser MUST NOT assume every D1 has a corresponding swim (don't crash on join, don't drop the athlete).
+- **Middle name (D1 cols 49-68)** — empty for most, populated for some — already documented at the D1 section. Parser should treat trimmed-empty as null (already covered).
+- **E2 status flag (col 13).** Fixture exhibits ` `, `R`, `S`, `Q`. Other meets could plausibly emit additional codes (e.g. `F` for "fouled start", `D` for "did not finish") that we don't have examples of. **Parser SHOULD branch only on `Q` (DQ)** and treat any other non-blank flag as "not-a-swim with unknown reason" rather than failing.
+- **Course flag (E1 col 51, E2 col 12).** Fixture is uniformly `L` (LCM). A short-course meet would emit `S` or `Y`. Parser must accept all three (and blank, when paired with `0.00`).
