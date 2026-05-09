@@ -154,6 +154,9 @@ importers:
       '@flipturn/db':
         specifier: workspace:*
         version: link:../../../packages/db
+      '@flipturn/sdif-parser':
+        specifier: workspace:*
+        version: link:../../../packages/sdif-parser
       '@flipturn/shared':
         specifier: workspace:*
         version: link:../../../packages/shared

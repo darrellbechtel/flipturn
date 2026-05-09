@@ -21,10 +21,12 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "seed-fixture": "tsx scripts/seed-fixture.ts"
+    "seed-fixture": "tsx scripts/seed-fixture.ts",
+    "import:mssac": "tsx src/scripts/import-mssac-preview.ts"
   },
   "dependencies": {
     "@flipturn/db": "workspace:*",
+    "@flipturn/sdif-parser": "workspace:*",
     "@flipturn/shared": "workspace:*",
     "@sentry/node": "^8.34.0",
     "bullmq": "^5.20.0",
