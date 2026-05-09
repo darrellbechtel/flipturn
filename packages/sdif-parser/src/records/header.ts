@@ -20,10 +20,14 @@
  * JS slice on the body: `body.slice(a - 3, b - 2)`.
  *
  * Timezone: `.hy3` files carry no timezone information. We interpret the
- * date+time as UTC for v1. Downstream record parsers (e.g. B1 meet dates)
- * should adopt the same convention so meets, swims, and the file header
- * agree on a single time basis.
+ * date+time as UTC for v1. Downstream record parsers (e.g. B1 meet dates,
+ * D1 athlete DOB) adopt the same convention so meets, swims, and the file
+ * header agree on a single time basis. The MMDDYYYY → UTC-midnight portion
+ * is shared via `parseMMDDYYYY` in `src/util/date.ts`; only the AM/PM
+ * time-of-day piece is unique to A1 and stays local.
  */
+
+import { parseMMDDYYYY } from '../util/date.js';
 
 export interface HeaderRecord {
   /** Software vendor (e.g., "Hy-Tek, Ltd"). */
@@ -55,15 +59,19 @@ export function parseHeader(body: string): HeaderRecord {
  * Combine an MMDDYYYY date field and an "H:MM AM/PM" 9-char right-aligned
  * time field into a single UTC `Date`.
  *
- * The time field is 9 characters wide with the form `[ ]H:MM AM` or `HH:MM AM`
- * (right-aligned; padded with leading spaces). The trailing `M` of the AM/PM
- * suffix sits at col 75.
+ * The date portion is delegated to the shared `parseMMDDYYYY` helper; only
+ * the AM/PM time-of-day parsing (unique to A1) lives here. The time field is
+ * 9 characters wide with the form `[ ]H:MM AM` or `HH:MM AM` (right-aligned;
+ * padded with leading spaces). The trailing `M` of the AM/PM suffix sits at
+ * col 75.
  */
 function parseDateTime(dateField: string, timeField: string): Date {
-  // Date: MMDDYYYY
-  const month = Number.parseInt(dateField.slice(0, 2), 10);
-  const day = Number.parseInt(dateField.slice(2, 4), 10);
-  const year = Number.parseInt(dateField.slice(4, 8), 10);
+  const datePart = parseMMDDYYYY(dateField);
+  if (!datePart) {
+    // A1's file-creation date is mandatory; treat zero/blank as a format error
+    // rather than silently producing an undefined timestamp.
+    throw new Error(`A1 header: unrecognized date field: "${dateField}"`);
+  }
 
   // Time: trim the leading-space padding, then split "H:MM AM" / "HH:MM PM".
   const trimmed = timeField.trim();
@@ -79,5 +87,6 @@ function parseDateTime(dateField: string, timeField: string): Date {
   if (meridiem === 'AM' && hour === 12) hour = 0;
   else if (meridiem === 'PM' && hour !== 12) hour += 12;
 
-  return new Date(Date.UTC(year, month - 1, day, hour, minute, 0, 0));
+  // Add the time-of-day onto the UTC-midnight returned by parseMMDDYYYY.
+  return new Date(datePart.getTime() + (hour * 60 + minute) * 60_000);
 }

@@ -29,8 +29,13 @@
  * carry it).
  *
  * Timezone: dates are interpreted as UTC midnight, matching the A1 header
- * convention. `.hy3` files carry no timezone information.
+ * convention. `.hy3` files carry no timezone information. The MMDDYYYY →
+ * UTC-midnight conversion is delegated to the shared `parseMMDDYYYY` helper
+ * in `src/util/date.ts` (used by A1, B1, D1, and any future date-bearing
+ * record).
  */
+
+import { parseMMDDYYYY } from '../util/date.js';
 
 export interface MeetRecord {
   /** Meet name, trimmed of trailing whitespace. */
@@ -51,8 +56,16 @@ export interface MeetRecord {
  */
 export function parseMeet(body: string): MeetRecord {
   const name = body.slice(3 - 3, 47 - 2).trimEnd();
-  const startDate = parseDate(body.slice(93 - 3, 100 - 2));
-  const endDate = parseDate(body.slice(101 - 3, 108 - 2));
+  const startField = body.slice(93 - 3, 100 - 2);
+  const endField = body.slice(101 - 3, 108 - 2);
+  const startDate = parseMMDDYYYY(startField);
+  const endDate = parseMMDDYYYY(endField);
+  if (!startDate) {
+    throw new Error(`B1 meet: unrecognized start-date field: "${startField}"`);
+  }
+  if (!endDate) {
+    throw new Error(`B1 meet: unrecognized end-date field: "${endField}"`);
+  }
 
   // See file JSDoc: B1 doesn't carry course; v1 hardcodes LCM (matches all
   // 5,646 E1.course flags in the MSSAC fixture). Revisit when ingesting a
@@ -60,21 +73,4 @@ export function parseMeet(body: string): MeetRecord {
   const course: MeetRecord['course'] = 'LCM';
 
   return { name, startDate, endDate, course };
-}
-
-/**
- * Parse an MMDDYYYY date field into a UTC-midnight `Date`.
- */
-function parseDate(field: string): Date {
-  const month = Number.parseInt(field.slice(0, 2), 10);
-  const day = Number.parseInt(field.slice(2, 4), 10);
-  const year = Number.parseInt(field.slice(4, 8), 10);
-  if (
-    !Number.isFinite(month) ||
-    !Number.isFinite(day) ||
-    !Number.isFinite(year)
-  ) {
-    throw new Error(`B1 meet: unrecognized date field: "${field}"`);
-  }
-  return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
 }
